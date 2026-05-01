@@ -74,6 +74,27 @@ def load_numpy_candles_from_binance_file(path_or_url: str) -> np.ndarray:
     return out
 
 
+def numpy_candles_filter_date(arr: np.ndarray, start_date=None, end_date=None, count=None) -> np.ndarray:
+    def _to_ms(s):
+        dt = datetime.fromisoformat(s)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt.timestamp() * 1000
+
+    ts = arr[:, NC.ts]
+    mask = np.ones(len(ts), dtype=bool)
+
+    if start_date is not None:
+        mask &= ts >= _to_ms(start_date)
+    if end_date is not None:
+        mask &= ts <= _to_ms(end_date)
+
+    result = arr[mask]
+    if count is not None:
+        result = result[:count]
+    return result
+
+
 def numpy_candles_info(arr: np.ndarray) -> None:
     ts = arr[:, NC.ts]
     tf_sec = int((ts[1] - ts[0]) / 1000)
