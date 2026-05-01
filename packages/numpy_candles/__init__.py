@@ -52,8 +52,17 @@ def load_numpy_candles_from_binance_file(path_or_url: str) -> np.ndarray:
     out[:, NC.q]  = loaded[:, 6]
     out[:, NC.n]  = loaded[:, 7]
 
-    # vwap = quote_volume / volume
-    out[:, NC.vwap] = loaded[:, 6] / loaded[:, 5]
+    # vwap = quote_volume / volume; forward-fill candles with zero volume or quote
+    # to avoid discontinuities (nan/zero) in the vwap series
+    v_col, q_col = loaded[:, 5], loaded[:, 6]
+    invalid = (v_col == 0) | (q_col == 0)
+    safe_v = np.where(invalid, 1.0, v_col)
+    vwap = np.where(invalid, np.nan, q_col / safe_v)
+    # forward-fill: each invalid index inherits the last valid index's value
+    fwd_idx = np.arange(n_rows)
+    fwd_idx[invalid] = 0
+    np.maximum.accumulate(fwd_idx, out=fwd_idx)
+    out[:, NC.vwap] = vwap[fwd_idx]
 
     # vb = taker_buy_volume
     out[:, NC.vb] = loaded[:, 8]
