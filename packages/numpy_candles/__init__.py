@@ -71,3 +71,84 @@ def load_numpy_candles_from_binance_file(path_or_url: str) -> np.ndarray:
     out[:, NC.vs] = loaded[:, 5] - loaded[:, 8]
 
     return out
+
+
+def numpy_candle_test(arr: np.ndarray) -> None:
+    errors = []
+
+    def _row_list(mask, limit=5):
+        indices = np.where(mask)[0]
+        sample = ", ".join(str(i) for i in indices[:limit])
+        suffix = f" … ({len(indices)} total)" if len(indices) > limit else f" ({len(indices)} total)"
+        return sample + suffix
+
+    # 1. All values must be finite and >= 0
+    bad_finite = ~np.isfinite(arr)
+    if bad_finite.any():
+        for col_idx, name in vars(NC).items():
+            col_mask = bad_finite[:, name]
+            if col_mask.any():
+                errors.append(f"Non-finite values in column '{col_idx}': rows {_row_list(col_mask)}")
+
+    bad_negative = arr < 0
+    if bad_negative.any():
+        for col_idx, name in vars(NC).items():
+            col_mask = bad_negative[:, name]
+            if col_mask.any():
+                errors.append(f"Negative values in column '{col_idx}': rows {_row_list(col_mask)}")
+
+    # 2. ts differences must all be equal (no missing candles)
+    ts = arr[:, NC.ts]
+    if len(ts) > 1:
+        diffs = np.diff(ts)
+        expected_diff = diffs[0]
+        unequal = diffs != expected_diff
+        if unequal.any():
+            errors.append(
+                f"Irregular timestamp gaps (expected {expected_diff:.0f} ms): "
+                f"after rows {_row_list(unequal)}"
+            )
+
+    # 3. open and close must be within [low, high]
+    for col_name, col_idx in (("open", NC.o), ("close", NC.c)):
+        below = arr[:, col_idx] < arr[:, NC.l]
+        above = arr[:, col_idx] > arr[:, NC.h]
+        if below.any():
+            errors.append(f"{col_name} below low: rows {_row_list(below)}")
+        if above.any():
+            errors.append(f"{col_name} above high: rows {_row_list(above)}")
+
+    # 4. For candles with non-zero volume and quote, vwap must equal q / v
+    active = (arr[:, NC.v] > 0) & (arr[:, NC.q] > 0)
+    if active.any():
+        expected_vwap = arr[active, NC.q] / arr[active, NC.v]
+        bad_vwap = ~np.isclose(arr[active, NC.vwap], expected_vwap)
+        if bad_vwap.any():
+            active_indices = np.where(active)[0]
+            bad_rows = active_indices[bad_vwap]
+            errors.append(f"vwap != q/v for active candles: rows {_row_list(bad_rows > -1, limit=5)}")
+            # reframe mask into full-array space for _row_list
+            full_mask = np.zeros(len(arr), dtype=bool)
+            full_mask[bad_rows] = True
+            errors[-1] = f"vwap != q/v for active candles: rows {_row_list(full_mask)}"
+
+    # 5. vs + vb must equal v for every candle
+    bad_vol_split = ~np.isclose(arr[:, NC.vs] + arr[:, NC.vb], arr[:, NC.v])
+    if bad_vol_split.any():
+        errors.append(f"vs + vb != v: rows {_row_list(bad_vol_split)}")
+
+    # 6. Candles with n > 0 must have volume > 0 and quote > 0
+    has_trades = arr[:, NC.n] > 0
+    if has_trades.any():
+        zero_v = has_trades & (arr[:, NC.v] == 0)
+        zero_q = has_trades & (arr[:, NC.q] == 0)
+        if zero_v.any():
+            errors.append(f"n > 0 but volume == 0: rows {_row_list(zero_v)}")
+        if zero_q.any():
+            errors.append(f"n > 0 but quote == 0: rows {_row_list(zero_q)}")
+
+    if errors:
+        for msg in errors:
+            print(f"FAIL: {msg}")
+    else:
+        print("all tests passed")
