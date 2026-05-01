@@ -1,5 +1,6 @@
 import io
 import urllib.request
+from datetime import datetime, timezone
 from types import SimpleNamespace
 
 import numpy as np
@@ -71,6 +72,21 @@ def load_numpy_candles_from_binance_file(path_or_url: str) -> np.ndarray:
     out[:, NC.vs] = loaded[:, 5] - loaded[:, 8]
 
     return out
+
+
+def numpy_candles_info(arr: np.ndarray) -> None:
+    ts = arr[:, NC.ts]
+    tf_sec = int((ts[1] - ts[0]) / 1000)
+    duration_ms = ts[-1] - ts[0]
+    duration_min = duration_ms / 1000 / 60
+    duration_days = duration_ms / 1000 / 60 / 60 / 24
+    first_dt = datetime.fromtimestamp(ts[0] / 1000, tz=timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+    last_dt  = datetime.fromtimestamp(ts[-1] / 1000, tz=timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+    print(
+        f"shape={arr.shape}  tf={tf_sec}s  "
+        f"duration={duration_min:.1f}min/{duration_days:.2f}days  "
+        f"first={first_dt}  last={last_dt}"
+    )
 
 
 def numpy_candle_test(arr: np.ndarray) -> None:
