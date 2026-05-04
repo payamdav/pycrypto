@@ -1,0 +1,41 @@
+name: Update HuggingFace Parquet Candles
+
+on:
+  workflow_dispatch:
+    inputs:
+      full_run:
+        description: "Upload ALL missing months (unchecked = test mode: 1 file per asset)"
+        required: false
+        default: false
+        type: boolean
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  update-parquet-candles:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install -r scripts/huggingface_parquet_candles/requirements.txt
+
+      - name: Run updater
+        env:
+          HUGGINGFACE_FULL_TOKEN: ${{ secrets.HUGGINGFACE_FULL_TOKEN }}
+          PYTHONPATH: ${{ github.workspace }}/packages
+        run: |
+          ARGS=""
+          if [ "${{ inputs.full_run }}" = "true" ]; then
+            ARGS="--full"
+          fi
+          python scripts/huggingface_parquet_candles/update_huggingface_parquet_candles.py $ARGS
