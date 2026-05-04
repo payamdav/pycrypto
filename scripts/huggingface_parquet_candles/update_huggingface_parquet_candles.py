@@ -168,7 +168,10 @@ def numpy_to_parquet_bytes(arr: np.ndarray) -> bytes:
     columns: dict[str, pa.Array] = {}
     for name, col_idx, pa_type in _COLS:
         col = arr[:, col_idx]
-        if pa_type == pa.int32():
+        if pa_type == pa.timestamp("ms"):
+            # numpy array is float64; PyArrow requires int64 to build timestamp
+            col = col.astype(np.int64)
+        elif pa_type == pa.int32():
             col = col.astype(np.int32)
         columns[name] = pa.array(col, type=pa_type)
 
