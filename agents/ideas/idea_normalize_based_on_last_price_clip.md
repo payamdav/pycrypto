@@ -140,6 +140,60 @@ scaled_la  = np.clip(k * raw_la, clip_min, clip_max)
 
 ---
 
+## Time Normalization
+
+When **time normalization** is mentioned, the position of each candle within the
+look-back window is mapped to a fixed value in `[0, 1)`.
+
+### Definition
+
+```
+t[i] = i / look_back       for i = 0, 1, 2, …, look_back - 1
+```
+
+| Position        | Normalized time          |
+|-----------------|--------------------------|
+| First candle    | `0 / look_back = 0.0`    |
+| Second candle   | `1 / look_back`          |
+| Last candle     | `(look_back-1) / look_back`  e.g. `1439/1440 ≈ 0.9993` |
+| `current_time`  | `1.0`  (not a candle — the observation moment after last candle closes) |
+
+> `t = 1.0` is never part of the stored array; it represents `current_time` as defined in
+> `idea_look_back_look_ahead.md`.
+
+### Key Properties
+
+- **Fixed vector** — identical for every observation window; compute once and reuse.
+- **Independent of actual timestamps** — does not use `ts` values, only window position.
+- **Not applied to look-ahead** unless explicitly stated. If applied to look-ahead, continue
+  the same scale: `t_la[j] = (look_back + j) / look_back` for `j = 1, …, look_ahead`,
+  so the look-ahead candles fall in `(1.0, 1.0 + look_ahead/look_back]`.
+
+### Code
+
+```python
+# Compute once — reuse for all windows
+t = np.arange(look_back) / look_back          # shape (look_back,)
+# t[0] = 0.0,  t[-1] = (look_back-1)/look_back,  "t=1.0" = current_time
+
+# Look-ahead extension (only if stated)
+t_la = (look_back + np.arange(1, look_ahead + 1)) / look_back  # shape (look_ahead,)
+# t_la[0] = look_back/look_back = 1 + 1/look_back
+# t_la[-1] = (look_back + look_ahead) / look_back
+```
+
+### Vectorized (2-D)
+
+The time vector is the same for every observation row — broadcast directly:
+
+```python
+# t shape: (look_back,)  →  broadcasts against (n_obs, look_back) without copying
+# No per-observation computation needed.
+t = np.arange(look_back) / look_back   # computed once, used as-is
+```
+
+---
+
 ## Inverse Transform (de-normalization)
 
 To recover the original price from a scaled value:
