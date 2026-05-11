@@ -166,8 +166,9 @@ t[i] = i / look_back       for i = 0, 1, 2, …, look_back - 1
 - **Fixed vector** — identical for every observation window; compute once and reuse.
 - **Independent of actual timestamps** — does not use `ts` values, only window position.
 - **Not applied to look-ahead** unless explicitly stated. If applied to look-ahead, continue
-  the same scale: `t_la[j] = (look_back + j) / look_back` for `j = 1, …, look_ahead`,
-  so the look-ahead candles fall in `(1.0, 1.0 + look_ahead/look_back]`.
+  the same scale: `t_la[j] = (look_back + j) / look_back` for `j = 0, …, look_ahead - 1`,
+  so the look-ahead candles fall in `[1.0, 1.0 + (look_ahead-1)/look_back]`.
+  The first look-ahead candle opens exactly at `current_time` (t = 1.0).
 
 ### Code
 
@@ -177,9 +178,9 @@ t = np.arange(look_back) / look_back          # shape (look_back,)
 # t[0] = 0.0,  t[-1] = (look_back-1)/look_back,  "t=1.0" = current_time
 
 # Look-ahead extension (only if stated)
-t_la = (look_back + np.arange(1, look_ahead + 1)) / look_back  # shape (look_ahead,)
-# t_la[0] = look_back/look_back = 1 + 1/look_back
-# t_la[-1] = (look_back + look_ahead) / look_back
+t_la = (look_back + np.arange(look_ahead)) / look_back  # shape (look_ahead,)
+# t_la[0] = look_back / look_back = 1.0  (first LA candle opens at current_time)
+# t_la[-1] = (look_back + look_ahead - 1) / look_back
 ```
 
 ### Vectorized (2-D)
