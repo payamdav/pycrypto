@@ -2,7 +2,7 @@
 """
 Create one Parquet file per calendar day from depth snapshot JSON files.
 
-Input files (current working directory):
+Input files (target directory):
   {asset}_depth_snapshot_{ts_ms}.json
   {asset}_depth_snapshot_{ts_ms}.json.gz   (decompressed in memory, file untouched)
 
@@ -13,9 +13,12 @@ Processed source files are renamed to *.del after their Parquet is written.
 Only "complete" days are written — the last group of files is left untouched
 because the day may still be receiving new snapshots.
 
+The script processes every immediate subdirectory of the base directory.
+
 Usage:
-  python create_daily_parquet_files.py            # all complete days
-  python create_daily_parquet_files.py --days 3   # stop after 3 daily files
+  python create_daily_parquet_files.py                   # use CWD as base dir
+  python create_daily_parquet_files.py /path/to/base     # use given path as base dir
+  python create_daily_parquet_files.py --days 3          # stop after 3 daily files per subdir
 """
 
 import gzip
@@ -59,9 +62,11 @@ SCHEMA = pa.schema([
 
 # ── File discovery ────────────────────────────────────────────────────────────
 
-def find_snapshot_files() -> list[str]:
-    """Return sorted list of unprocessed snapshot files in CWD."""
-    files = glob.glob("*.json") + glob.glob("*.json.gz")
+def find_snapshot_files(directory: str) -> list[str]:
+    """Return sorted list of unprocessed snapshot files in *directory*."""
+    pattern_json    = os.path.join(directory, "*.json")
+    pattern_json_gz = os.path.join(directory, "*.json.gz")
+    files = glob.glob(pattern_json) + glob.glob(pattern_json_gz)
     files = [f for f in files if not f.endswith(".del")]
     return sorted(files)
 
@@ -118,11 +123,12 @@ def build_record(data: dict) -> dict:
 
 # ── Parquet writing ───────────────────────────────────────────────────────────
 
-def write_parquet(asset: str, day, records: list[dict]) -> str:
+def write_parquet(asset: str, day, records: list[dict], directory: str) -> str:
     """Build and write a Parquet file for one day. Returns the output filename."""
-    filename = (
+    filename = os.path.join(
+        directory,
         f"{asset}_depth_snapshot_"
-        f"{day.year}_{day.month:02d}_{day.day:02d}.parquet"
+        f"{day.year}_{day.month:02d}_{day.day:02d}.parquet",
     )
 
     table = pa.table(
@@ -173,30 +179,20 @@ def print_report(
         f"{elapsed_s:.2f}s"
     )
 
-# ── Main ──────────────────────────────────────────────────────────────────────
+# ── Per-directory processing ──────────────────────────────────────────────────
 
-def main() -> None:
-    parser = argparse.ArgumentParser(
-        description="Create daily Parquet files from depth snapshot JSON files.",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-    )
-    parser.add_argument(
-        "--days", type=int, default=0, metavar="N",
-        help="Stop after writing N daily files (default: 0 = unlimited).",
-    )
-    args = parser.parse_args()
-    max_days = args.days
-
-    files = find_snapshot_files()
+def process_directory(directory: str, max_days: int) -> None:
+    """Run the full pipeline for a single *directory*."""
+    files = find_snapshot_files(directory)
     if not files:
-        print("No snapshot files (*.json / *.json.gz) found in current directory.")
-        sys.exit(0)
+        print(f"  No snapshot files (*.json / *.json.gz) found — skipping.")
+        return
 
     asset = extract_asset(files[0])
-    print(f"Asset       : {asset}")
-    print(f"Files found : {len(files):,}")
+    print(f"  Asset       : {asset}")
+    print(f"  Files found : {len(files):,}")
     if max_days:
-        print(f"Day limit   : {max_days}")
+        print(f"  Day limit   : {max_days}")
     print()
 
     current_day  = None
@@ -209,7 +205,7 @@ def main() -> None:
         try:
             data = load_json(fp)
         except Exception as exc:
-            print(f"[WARN] Cannot read {fp}: {exc} — skipping.")
+            print(f"  [WARN] Cannot read {fp}: {exc} — skipping.")
             continue
 
         ts   = data["T"]
@@ -218,7 +214,7 @@ def main() -> None:
         # ── Day boundary detected ────────────────────────────────────────────
         if current_day is not None and date != current_day:
             t0 = time.perf_counter()
-            out_file = write_parquet(asset, current_day, day_records)
+            out_file = write_parquet(asset, current_day, day_records, directory)
             elapsed  = time.perf_counter() - t0
 
             print_report(
@@ -233,8 +229,8 @@ def main() -> None:
             days_written += 1
 
             if max_days and days_written >= max_days:
-                print(f"\nReached --days {max_days} limit. Exiting.")
-                sys.exit(0)
+                print(f"\n  Reached --days {max_days} limit. Stopping for this directory.")
+                return
 
             # Reset for the new day
             current_day  = date
@@ -251,12 +247,51 @@ def main() -> None:
     # ── End of file list ─────────────────────────────────────────────────────
     if day_files:
         print(
-            f"\n{len(day_files):,} file(s) from {current_day} were NOT written — "
+            f"\n  {len(day_files):,} file(s) from {current_day} were NOT written — "
             f"day may still be receiving snapshots. "
             f"Run again once the day is complete (a newer day's files appear)."
         )
 
-    print(f"\nDone. {days_written} daily Parquet file(s) written.")
+    print(f"\n  Done. {days_written} daily Parquet file(s) written.")
+
+# ── Main ──────────────────────────────────────────────────────────────────────
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description="Create daily Parquet files from depth snapshot JSON files.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    parser.add_argument(
+        "path", nargs="?", default=None,
+        help="Base directory to scan (default: current working directory).",
+    )
+    parser.add_argument(
+        "--days", type=int, default=0, metavar="N",
+        help="Stop after writing N daily files per subdirectory (default: 0 = unlimited).",
+    )
+    args = parser.parse_args()
+    max_days = args.days
+
+    base_dir = Path(args.path).resolve() if args.path else Path.cwd()
+
+    if not base_dir.is_dir():
+        print(f"Error: '{base_dir}' is not a directory.")
+        sys.exit(1)
+
+    subdirs = sorted(p for p in base_dir.iterdir() if p.is_dir())
+
+    if not subdirs:
+        print(f"No subdirectories found in '{base_dir}'.")
+        sys.exit(0)
+
+    print(f"Base directory : {base_dir}")
+    print(f"Subdirectories : {len(subdirs)}")
+    print()
+
+    for subdir in subdirs:
+        print(f"── {subdir.name} ──────────────────────────────────────────────────")
+        process_directory(str(subdir), max_days)
+        print()
 
 
 if __name__ == "__main__":
