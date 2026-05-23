@@ -4,6 +4,10 @@ Before writing any code, read all files listed below. They contain the authorita
 
 ## Required Reading
 
+### General
+
+- @agents/general/paths_and_files.md — repository folder structure, file placement rules, and decision logic for where to create new files
+
 ### Datasets
 
 - @agents/datasets/assets.md — canonical list of supported crypto assets and their lowercase folder names
