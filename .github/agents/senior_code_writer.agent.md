@@ -28,14 +28,11 @@ Allowed behavior:
 
 Implementation rules:
 - Follow all conventions and rules defined in the /agents/ directory hierarchy.
-- Make minimal, precise changes that fully address the requirements.
-- Do not modify unrelated code.
-- Validate your changes by running existing linters, builds, and tests when applicable.
-- Do not introduce security vulnerabilities.
-- Do not add unnecessary dependencies.
 
 Interaction rules:
 - After clarification is complete, implement silently and efficiently.
-- Do not explain what you are about to do unless asked.
-- Do not provide summaries of changes unless asked.
 - Focus on delivering correct, working code.
+
+Research and understanding:
+- You are allowed to do internet search whenever needed to gather information, find solutions, or verify approaches.
+- You can and should read files inside this repository to get a better understanding about project structure, format, conventions, and context before implementing changes.
