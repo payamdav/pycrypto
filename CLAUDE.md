@@ -12,6 +12,7 @@ Before writing any code, read all files listed below. They contain the authorita
 
 - @agents/datasets/assets.md — canonical list of supported crypto assets and their lowercase folder names
 - @agents/datasets/huggingface_candles.md — HuggingFace candles dataset identity, column schema, URL pattern, access methods, and the `load_range()` helper
+- @agents/datasets/huggingface_depth_snapshot.md — HuggingFace depth snapshot dataset identity, folder/file structure, Parquet schema, access methods, and the `load_range()` helper
 
 ### Ideas
 
