@@ -37,6 +37,8 @@ _PARQUET_RE = re.compile(
 
 # Small delay between uploads to stay well within HuggingFace rate limits.
 UPLOAD_DELAY_S = 0.5
+VERIFY_RETRIES = 5
+VERIFY_DELAY_S = 1.0
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -69,6 +71,31 @@ def extract_asset(filename: str) -> str:
     return m.group(1)
 
 
+def list_repo_files(api: HfApi) -> set[str]:
+    """Return all file paths currently stored in the dataset repo."""
+    return set(api.list_repo_files(repo_id=REPO_ID, repo_type=REPO_TYPE))
+
+
+def asset_folder_exists(repo_files: set[str], asset: str) -> bool:
+    """Return True when the dataset already has at least one file under asset/."""
+    prefix = f"{asset}/"
+    return any(path.startswith(prefix) for path in repo_files)
+
+
+def verify_upload(api: HfApi, repo_path: str) -> set[str]:
+    """
+    Confirm that a file is present in the expected dataset location.
+    Returns the refreshed repo file set on success.
+    """
+    for attempt in range(1, VERIFY_RETRIES + 1):
+        repo_files = list_repo_files(api)
+        if repo_path in repo_files:
+            return repo_files
+        if attempt < VERIFY_RETRIES:
+            time.sleep(VERIFY_DELAY_S)
+    raise RuntimeError(f"Uploaded file was not found in dataset path: {repo_path}")
+
+
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 
@@ -97,6 +124,7 @@ def main() -> None:
         sys.exit(1)
 
     api = HfApi(token=token)
+    repo_files = list_repo_files(api)
 
     files = collect_parquet_files(base_dir)
     if not files:
@@ -114,8 +142,11 @@ def main() -> None:
         try:
             asset      = extract_asset(fp.name)
             repo_path  = f"{asset}/{fp.name}"
+            folder_exists = asset_folder_exists(repo_files, asset)
 
             print(f"Uploading {fp}  →  {REPO_ID}/{repo_path} … ", end="", flush=True)
+            if not folder_exists:
+                print(f"[creating {asset}/] ", end="", flush=True)
 
             api.upload_file(
                 path_or_fileobj=str(fp),
@@ -124,6 +155,7 @@ def main() -> None:
                 repo_type=REPO_TYPE,
             )
 
+            repo_files = verify_upload(api, repo_path)
             fp.unlink()
             uploaded += 1
             print("OK")
