@@ -30,7 +30,7 @@ The `requirements.txt` must list every external package required to run the scri
 
 When a Jupyter notebook imports or uses any packages, modules, or other parts of **this project**, the repository **must** be cloned inside the Jupyter server environment so that the project code is available at runtime. Without this step the notebook will fail to resolve local imports.
 
-Add the following pattern at the top of the notebook (before any project imports):
+If the notebook is created on the **main** branch, use the following pattern at the top of the notebook (before any project imports):
 
 ```python
 import os
@@ -50,7 +50,28 @@ if REPO_PATH not in sys.path:
     sys.path.append(REPO_PATH)
 ```
 
-> This ensures the notebook can successfully import project modules regardless of where the Jupyter server is running.
+If the notebook is created on a **branch other than main**, the clone command **must** specify that branch so the correct version of the project code is used:
+
+```python
+import os
+import sys
+
+# 1. Define your GitHub repository details
+REPO_URL = "https://github.com/payamdav/pycrypto.git"
+REPO_NAME = "pycrypto"
+BRANCH_NAME = "your-branch-name"  # Replace with the actual branch name
+
+# 2. Clone the specific branch if it hasn't been cloned yet
+if not os.path.exists(REPO_NAME):
+    !git clone -b {BRANCH_NAME} {REPO_URL}
+
+# 3. Add the cloned repository root to the Python path
+REPO_PATH = os.path.abspath(REPO_NAME)
+if REPO_PATH not in sys.path:
+    sys.path.append(REPO_PATH)
+```
+
+> **Important:** Always match the branch in the clone command to the branch the notebook lives on. Otherwise the notebook may use outdated or incorrect project code and fail to run as desired.
 
 ---
 
