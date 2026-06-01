@@ -26,4 +26,32 @@ The `requirements.txt` must list every external package required to run the scri
 
 ---
 
+## Repository Access in Jupyter Notebooks
+
+When a Jupyter notebook imports or uses any packages, modules, or other parts of **this project**, the repository **must** be cloned inside the Jupyter server environment so that the project code is available at runtime. Without this step the notebook will fail to resolve local imports.
+
+Add the following pattern at the top of the notebook (before any project imports):
+
+```python
+import os
+import sys
+
+# 1. Define your GitHub repository details
+REPO_URL = "https://github.com/payamdav/pycrypto.git"
+REPO_NAME = "pycrypto"
+
+# 2. Clone the repo if it hasn't been cloned yet
+if not os.path.exists(REPO_NAME):
+    !git clone {REPO_URL}
+
+# 3. Add the cloned repository root to the Python path
+REPO_PATH = os.path.abspath(REPO_NAME)
+if REPO_PATH not in sys.path:
+    sys.path.append(REPO_PATH)
+```
+
+> This ensures the notebook can successfully import project modules regardless of where the Jupyter server is running.
+
+---
+
 *End of rules — additional rules will be appended below as needed.*
