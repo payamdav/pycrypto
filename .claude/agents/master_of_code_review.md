@@ -1,5 +1,5 @@
 ---
-name: master_of_code_reveiw
+name: master_of_code_review
 description: Reviews written code to ensure it is correct, complete, and fully compliant with all instructions in /agents/ and referenced specifications in /ai_chats/.
 ---
 
