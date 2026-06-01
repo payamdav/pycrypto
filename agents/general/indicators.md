@@ -9,7 +9,7 @@ packages/indicators/
 ## Import Path
 
 ```python
-from packages.indicators import ma, wma, rsi_1_1, stddev
+from packages.indicators import ma, wma, vwma, rsi_1_1, stddev
 ```
 
 Or import individual functions directly:
@@ -17,6 +17,7 @@ Or import individual functions directly:
 ```python
 from packages.indicators.ma import ma
 from packages.indicators.wma import wma
+from packages.indicators.vwma import vwma
 from packages.indicators.rsi import rsi_1_1
 from packages.indicators.stddev import stddev
 ```
@@ -71,6 +72,25 @@ def wma(array: np.ndarray, weights: np.ndarray, window: int = 60) -> np.ndarray
 
 ---
 
+### `vwma(array, volume, window=60)` — Volume Weighted Moving Average
+
+**File:** `packages/indicators/vwma.py`
+
+**Signature:**
+```python
+def vwma(array: np.ndarray, volume: np.ndarray, window: int = 60) -> np.ndarray
+```
+
+**Parameters:**
+- `volume`: 1-D `np.float64` array with the same shape as `array`.
+
+**Behavior:**
+- Computes a volume-weighted moving average over the trailing `window` elements.
+- `output[i] = sum(array[i - window + 1 : i + 1] * volume[i - window + 1 : i + 1]) / sum(volume[i - window + 1 : i + 1])` for `i >= window - 1`
+- `output[i] = 0.0` for `i < window - 1`
+
+---
+
 ### `rsi_1_1(array, window=60)` — RSI Scaled to [-1, 1]
 
 **File:** `packages/indicators/rsi.py`
@@ -120,4 +140,7 @@ std_out   = stddev(prices, window=20)
 
 weights   = np.arange(1, 21, dtype=np.float64)   # length must equal window
 wma_out   = wma(prices, weights, window=20)
+
+volume    = np.random.rand(200).astype(np.float64) * 1000.0
+vwma_out  = vwma(prices, volume, window=20)
 ```
