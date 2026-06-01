@@ -22,7 +22,7 @@ Test design principles:
 - Print all inputs and outputs clearly with labels.
 - When the function or algorithm operates on numerical sequences (e.g., moving averages, filters, transforms), include a chart that plots both the source and the result for visual comparison.
 - Choose input values in simple ranges (e.g., 0–10) so patterns are easy to spot.
-- The goal is that correctness can be verified by the tester agent, by a reviewing agent, and by a human — all without running additional code.
+- The goal is that correctness can be verified by this agent, by a reviewing agent, and by a human — all without running additional code.
 
 Output requirements:
 - Each test notebook must be placed under `/notebooks/tests/` with at least one additional sub-folder level that indicates what the test relates to (e.g., `/notebooks/tests/moving_average/`, `/notebooks/tests/depth_snapshot/`).
