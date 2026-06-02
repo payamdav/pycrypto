@@ -126,6 +126,24 @@ def stddev(array: np.ndarray, window: int = 60) -> np.ndarray
 
 ---
 
+### `rolling_robust_z_score(array, window=60)` — Rolling Robust Z-Score
+
+**File:** `packages/indicators/rolling_robust_z_score.py`
+
+**Signature:**
+```python
+def rolling_robust_z_score(array: np.ndarray, window: int = 60) -> np.ndarray
+```
+
+**Behavior:**
+- Computes a robust z-score using median and IQR over the trailing `window` elements.
+- `output[i] = (array[i] - median) / IQR` for `i >= window - 1`, where `IQR = Q3 - Q1`.
+- `Q1 = sorted[W // 4]`, `Q3 = sorted[3 * W // 4]` from the sorted window of size `W`.
+- `output[i] = 0.0` for `i < window - 1` (zero-padding) or when `IQR == 0`.
+- Uses an incremental sort strategy: the first valid window is fully sorted once; subsequent windows update the sorted buffer in O(W) by replacing the outgoing value with the incoming value and bubbling it into position.
+
+---
+
 ## Usage Example
 
 ```python
