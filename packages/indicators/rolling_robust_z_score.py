@@ -51,20 +51,16 @@ def rolling_robust_z_score(array, window=60):
 
         # Overwrite with new value and bubble into sorted position
         buf[k] = new_val
-        if k > 0 and buf[k] < buf[k - 1]:
-            # Bubble left (up)
-            while k > 0 and buf[k] < buf[k - 1]:
-                tmp = buf[k]
-                buf[k] = buf[k - 1]
-                buf[k - 1] = tmp
-                k -= 1
-        else:
-            # Bubble right (down)
-            while k < window - 1 and buf[k] > buf[k + 1]:
-                tmp = buf[k]
-                buf[k] = buf[k + 1]
-                buf[k + 1] = tmp
-                k += 1
+        while k > 0 and buf[k] < buf[k - 1]:
+            tmp = buf[k]
+            buf[k] = buf[k - 1]
+            buf[k - 1] = tmp
+            k -= 1
+        while k < window - 1 and buf[k] > buf[k + 1]:
+            tmp = buf[k]
+            buf[k] = buf[k + 1]
+            buf[k + 1] = tmp
+            k += 1
 
         if window % 2 == 1:
             median = buf[window // 2]
