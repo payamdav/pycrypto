@@ -56,7 +56,8 @@ def load_candles(asset: str, date_from: str, date_to: str, columns: list[str]) -
         out[:, i] = result[col].astype(np.float64)
 
     shape = out.shape
-    col_index = ",".join(f"ts:0" if i == 0 else f"{columns[i-1]}:{i}" for i in range(n_cols))
+    col_labels = ["ts"] + list(columns)
+    col_index = ",".join(f"{name}:{i}" for i, name in enumerate(col_labels))
 
     if n_rows > 0:
         first_dt = datetime.fromtimestamp(out[0, 0] / 1000, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
