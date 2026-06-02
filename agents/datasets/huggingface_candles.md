@@ -112,33 +112,22 @@ for year, month in months:
 df = pd.concat(frames).sort_values("ts").reset_index(drop=True)
 ```
 
-### 4. DuckDB — query in-memory (no httpfs required)
+### 4. DuckDB — native `hf://` access (recommended)
 
 ```python
-import io, requests
-import pyarrow as pa
-import pyarrow.parquet as pq
 import duckdb
 
-REPO = "https://huggingface.co/datasets/payamdavaee/candles/resolve/main"
-
-def load_asset(asset, year_months: list[tuple[str,str]]) -> pa.Table:
-    tables = []
-    for year, month in year_months:
-        url = f"{REPO}/{asset}/{asset}-1m-{year}-{month}.parquet"
-        resp = requests.get(url, timeout=60)
-        tables.append(pq.read_table(io.BytesIO(resp.content)))
-    return pa.concat_tables(tables)
-
 con = duckdb.connect()
-con.register("candles", load_asset("btcusdt", [("2026", "03"), ("2026", "04")]))
+asset = "btcusdt"
+hf_parquet_path = f"hf://datasets/payamdavaee/candles/{asset}/*.parquet"
 
-result = con.execute("""
+result = con.execute(f"""
     SELECT ts, vwap, vb
-    FROM candles
-    WHERE ts >= epoch_ms(1740787200000)   -- filter by timestamp if needed
-    ORDER BY ts
-""").df()
+    FROM read_parquet('{hf_parquet_path}')
+    WHERE ts >= epoch_ms('2026-03-01'::TIMESTAMP)
+      AND ts <= epoch_ms('2026-03-31 23:59:00'::TIMESTAMP)
+    ORDER BY ts ASC
+""").fetchdf()
 ```
 
 ### 5. `huggingface_hub` — download file to disk
