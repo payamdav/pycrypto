@@ -24,9 +24,9 @@ def load_candles(asset: str, date_from: str, date_to: str, columns: list[str]) -
 
     conditions = []
     if date_from:
-        conditions.append(f"ts >= epoch_ms('{date_from}'::TIMESTAMP)")
+        conditions.append(f"ts >= '{date_from}'::TIMESTAMP")
     if date_to:
-        conditions.append(f"ts <= epoch_ms('{date_to}'::TIMESTAMP)")
+        conditions.append(f"ts <= '{date_to}'::TIMESTAMP")
     where_clause = f"WHERE {' AND '.join(conditions)}" if conditions else ""
 
     query = f"""
