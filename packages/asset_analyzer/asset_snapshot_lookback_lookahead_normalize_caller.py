@@ -1,4 +1,5 @@
 from .asset_snapshot_lookback_lookahead_normalize import asset_snapshot_lookback_lookahead_normalize_prepare
+import numba as nb
 import numpy as np
 
 
@@ -7,11 +8,10 @@ def asset_snapshot_lookback_lookahead_normalize_prepare_single_by_index(arr: np.
     return asset_snapshot_lookback_lookahead_normalize_prepare(arr[index - look_back + 1 : index + look_ahead + 1], look_back, look_ahead, k_scaler)
 
 
-@nb.njit(inline='always')
-def asset_snapshot_lookback_lookahead_normalize_prepare_single_by_date_string(arr: np.ndarray, look_back: int, look_ahead: int, k_scaler: float, index: int, date_string: str):
+def asset_snapshot_lookback_lookahead_normalize_prepare_single_by_date_string(arr: np.ndarray, look_back: int, look_ahead: int, k_scaler: float, date_string: str):
     # date_string format is "YYYY-MM-DD HH:MM:SS"
-    # we convert it to timestamp ms and of look for ts equals to that if we find the exact equal timestamp we use that index, otherwise raise error. we assume that arr is sorted by timestamp in ascending order and we can use binary search to find the closest index
-    target_timestamp = np.datetime64(date_string).astype('datetime64[ms]').astype(np.int64)
+    # we convert it to timestamp ms and look for ts equals to that; if we find the exact equal timestamp we use that index, otherwise raise error. we assume that arr is sorted by timestamp in ascending order and we can use binary search to find the closest index
+    target_timestamp = int(np.datetime64(date_string, 'ms').astype(np.int64))
     left = 0
     right = arr.shape[0] - 1
     while left <= right:
