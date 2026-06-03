@@ -20,10 +20,10 @@ def asset_snapshot_lookback_lookahead_normalize_prepare(arr: np.ndarray, look_ba
     lb_x_axis = np.arange(look_back) / look_back
     lb_normalized_price = k_scaler * (arr[:look_back, 4] - last_candle_price) / last_candle_price  # normalize vwap price in the look_back period
     lb_normalized_price = np.clip(lb_normalized_price, -1, 1)
-    la_x_axis = (look_back + np.arange(look_ahead)) / look_back
+    la_x_axis = np.arange(look_ahead) / look_back
     la_normalized_price = k_scaler * (arr[look_back:, 4] - last_candle_price) / last_candle_price  # normalize vwap price in the look_ahead period
     la_normalized_price = np.clip(la_normalized_price, -1, 1)
-    return lb_x_axis, lb_normalized_price, la_x_axis, la_normalized_price
+    return
 
 
 
