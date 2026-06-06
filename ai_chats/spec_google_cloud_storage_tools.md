@@ -344,6 +344,60 @@ No try/except blocks are used anywhere except for the environment-detection impo
 
 ---
 
+## Agent Reference File
+
+Per `agents/general/paths_and_files.md`, every reusable package must have a corresponding
+description file under `/agents/` so that other agents can discover and use it.
+
+### Location
+
+```
+agents/packages/gcs_tools.md
+```
+
+The `agents/packages/` sub-directory does not yet exist and must be created as part of the
+implementation. It follows the same convention as `agents/datasets/` and `agents/ideas/`.
+
+### Required Content
+
+The file must document the following sections, in order:
+
+1. **Identity** — package path, purpose (one sentence), and a table listing Python import path
+   and the five exported function names.
+
+2. **Setup** — how to install / make available (path-based import, `requirements.txt` pointer).
+
+3. **`gcs_json_key_file`** — parameter table (`key_file`, `secret_key`, defaults), return value,
+   and the three environment branches (Colab, Kaggle, other) summarized in a table.
+
+4. **`list_files`** — signature, return type, one-line description.
+
+5. **`read_file`** — signature (including `content_type`), return type, note that `content_type`
+   is not used in the read path.
+
+6. **`save_file`** — signature (including `path` default), return type, default save location.
+
+7. **`write_file`** — signature (including `content_type`), return type, note that `content_type`
+   is passed to `upload_from_file`.
+
+8. **Usage Examples** — a minimal code snippet showing:
+   - Importing the package.
+   - Calling `list_files`.
+   - Calling `read_file` and decoding the result.
+   - Calling `save_file`.
+   - Calling `write_file` with an `io.BytesIO` object.
+
+9. **Notes for Agents** — bullet points covering:
+   - The package directory name contains hyphens; use sys.path manipulation or relative imports.
+   - Credentials are resolved automatically; callers never need to handle the key file directly.
+   - Each function call creates a fresh GCS client (no caching).
+
+The tone and format must match the existing agent reference files in `agents/datasets/`
+(e.g., `agents/datasets/huggingface_candles.md`): markdown tables for schemas, fenced code
+blocks for examples, terse descriptive prose.
+
+---
+
 ## Acceptance Criteria
 
 1. The directory `packages/tools/google-cloud-storage-tools/` exists and contains exactly three
@@ -367,6 +421,10 @@ No try/except blocks are used anywhere except for the environment-detection impo
     absolute path.
 15. `write_file` passes `content_type` to `blob.upload_from_file` and returns `None`.
 16. No exceptions are caught inside any GCS function body; all GCS errors propagate naturally.
+17. The file `agents/packages/gcs_tools.md` exists and documents all nine sections listed in the
+    **Agent Reference File** section of this spec.
+18. `agents/packages/gcs_tools.md` includes working usage examples with import statements, calls
+    to all five functions, and notes for agents.
 
 ---
 
@@ -399,3 +457,7 @@ None. The specification is fully determined by the request.
   from the service account key file automatically.
 - Do not add type stubs, docstrings, or logging unless they arise naturally — keep the
   implementation minimal.
+- After creating the package, also create `agents/packages/gcs_tools.md` following the content
+  requirements in the **Agent Reference File** section of this spec. The `agents/packages/`
+  sub-directory must be created; do not add an `__init__.py` to it. Match the tone and
+  markdown style of `agents/datasets/huggingface_candles.md`.
