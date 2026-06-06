@@ -7,12 +7,18 @@ Before writing any code, read all files listed below. They contain the authorita
 ### General
 
 - @agents/general/paths_and_files.md — repository folder structure, file placement rules, and decision logic for where to create new files
+- @agents/general/rules.md — mandatory rules for all agents: dependency management, notebook pip installs, requirements.txt, repository cloning in notebooks
+- @agents/general/indicators.md — indicators package: available functions (ma, wma, vwma, rsi_1_1, stddev, rolling_robust_z_score), signatures, behavior, and usage examples
 
 ### Datasets
 
 - @agents/datasets/assets.md — canonical list of supported crypto assets and their lowercase folder names
 - @agents/datasets/huggingface_candles.md — HuggingFace candles dataset identity, column schema, URL pattern, access methods, and the `load_range()` helper
 - @agents/datasets/huggingface_depth_snapshot.md — HuggingFace depth snapshot dataset identity, folder/file structure, Parquet schema, access methods, and the `load_range()` helper
+
+### Packages
+
+- @agents/packages/gcs_tools.md — GCS tools package (`packages/tools/google_cloud_storage_tools/`): exported functions, setup/import instructions, credential resolution, and usage examples
 
 ### Ideas
 

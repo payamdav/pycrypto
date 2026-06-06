@@ -4,7 +4,7 @@
 
 | Key             | Value                                        |
 |-----------------|----------------------------------------------|
-| Package path    | `packages/tools/google-cloud-storage-tools/` |
+| Package path    | `packages/tools/google_cloud_storage_tools/` |
 | Purpose         | GCS utility functions with automatic credential resolution across Google Colab, Kaggle, and other Python environments. |
 
 | Exported function   | Description                                           |
@@ -19,21 +19,21 @@
 
 ## Setup
 
-The package directory name contains hyphens and cannot be imported with dot notation directly. Use `sys.path` manipulation:
+Use `sys.path` manipulation or dot notation via the package path:
 
 ```python
 import sys
-sys.path.insert(0, "/path/to/pycrypto/packages/tools/google-cloud-storage-tools")
+sys.path.insert(0, "/path/to/pycrypto/packages/tools/google_cloud_storage_tools")
 import gcs_tools
 ```
 
 Or install dependencies first:
 
 ```
-pip install -r packages/tools/google-cloud-storage-tools/requirements.txt
+pip install -r packages/tools/google_cloud_storage_tools/requirements.txt
 ```
 
-See `packages/tools/google-cloud-storage-tools/requirements.txt` for the full dependency list (`google-cloud-storage`, `google-auth`).
+See `packages/tools/google_cloud_storage_tools/requirements.txt` for the full dependency list (`google-cloud-storage`, `google-auth`).
 
 ---
 
@@ -116,7 +116,7 @@ import sys
 import io
 
 # The package directory name contains hyphens — use sys.path to import it
-sys.path.insert(0, "/path/to/pycrypto/packages/tools/google-cloud-storage-tools")
+sys.path.insert(0, "/path/to/pycrypto/packages/tools/google_cloud_storage_tools")
 
 from gcs_tools import list_files, read_file, save_file, write_file
 
@@ -146,6 +146,6 @@ write_file(BUCKET, "uploads/hello.txt", buffer, content_type="text/plain")
 
 ## Notes for Agents
 
-- The package directory name (`google-cloud-storage-tools`) contains hyphens and cannot be imported using dot notation. Use `sys.path` manipulation or install the dependencies from `requirements.txt` and import `gcs_tools` directly.
+- The package directory name (`google_cloud_storage_tools`) contains hyphens and cannot be imported using dot notation. Use `sys.path` manipulation or install the dependencies from `requirements.txt` and import `gcs_tools` directly.
 - Credentials are resolved automatically by `gcs_json_key_file` based on the detected runtime environment (Colab, Kaggle, or local file). Callers never need to handle the key file or credential object directly.
 - Each function call creates a fresh `google.cloud.storage.Client` instance — there is no client caching or connection pooling across calls.
