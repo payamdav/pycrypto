@@ -9,11 +9,13 @@
 
 | Exported function   | Description                                           |
 |---------------------|-------------------------------------------------------|
-| `gcs_json_key_file` | Resolve and return the path to a GCP service account JSON key file |
+| `gcs_json_key_file` | Resolve and return the path to a GCP service account JSON key file — **must be called first before any GCS operation** |
 | `list_files`        | List all object names in a GCS bucket                 |
 | `read_file`         | Download a GCS object and return its contents as bytes |
 | `save_file`         | Download a GCS object to a local file                 |
 | `write_file`        | Upload a file-like object to a GCS bucket             |
+
+> **Mandatory initialization:** `gcs_json_key_file()` **must** be called once before any call to `list_files`, `read_file`, `save_file`, or `write_file`. It resolves and writes the credential file to disk; without it the GCS client cannot authenticate.
 
 ---
 
@@ -64,6 +66,8 @@ def gcs_json_key_file(key_file: str = "gcp_service_account_key.json", secret_key
 
 ## `list_files`
 
+> **Requires** `gcs_json_key_file()` to be called before use.
+
 ```python
 def list_files(bucket_name: str) -> list[str]:
 ```
@@ -73,6 +77,8 @@ Lists all objects in the specified GCS bucket. Returns a `list[str]` of blob nam
 ---
 
 ## `read_file`
+
+> **Requires** `gcs_json_key_file()` to be called before use.
 
 ```python
 def read_file(bucket_name: str, key: str, content_type: str = "application/octet-stream") -> bytes:
@@ -86,6 +92,8 @@ Downloads a GCS object and returns its raw contents as `bytes`.
 
 ## `save_file`
 
+> **Requires** `gcs_json_key_file()` to be called before use.
+
 ```python
 def save_file(bucket_name: str, key: str, path: str = None) -> str:
 ```
@@ -98,6 +106,8 @@ Downloads a GCS object to a local file. Returns the absolute path (`str`) of the
 ---
 
 ## `write_file`
+
+> **Requires** `gcs_json_key_file()` to be called before use.
 
 ```python
 def write_file(bucket_name: str, key: str, file_obj, content_type: str = "application/octet-stream") -> None:
@@ -118,7 +128,10 @@ import io
 # The package directory name contains hyphens — use sys.path to import it
 sys.path.insert(0, "/path/to/pycrypto/packages/tools/google_cloud_storage_tools")
 
-from gcs_tools import list_files, read_file, save_file, write_file
+from gcs_tools import gcs_json_key_file, list_files, read_file, save_file, write_file
+
+# STEP 1 — always call gcs_json_key_file() first to resolve credentials
+key_path = gcs_json_key_file()   # resolves from Colab / Kaggle secrets or local file
 
 BUCKET = "my-gcs-bucket"
 
@@ -146,6 +159,7 @@ write_file(BUCKET, "uploads/hello.txt", buffer, content_type="text/plain")
 
 ## Notes for Agents
 
+- **Always call `gcs_json_key_file()` first.** Every script or notebook that uses `list_files`, `read_file`, `save_file`, or `write_file` must call `gcs_json_key_file()` before any of those functions. Skipping this step will cause authentication failures because the GCS client cannot locate the service account key.
 - The package directory name (`google_cloud_storage_tools`) contains hyphens and cannot be imported using dot notation. Use `sys.path` manipulation or install the dependencies from `requirements.txt` and import `gcs_tools` directly.
 - Credentials are resolved automatically by `gcs_json_key_file` based on the detected runtime environment (Colab, Kaggle, or local file). Callers never need to handle the key file or credential object directly.
 - Each function call creates a fresh `google.cloud.storage.Client` instance — there is no client caching or connection pooling across calls.
