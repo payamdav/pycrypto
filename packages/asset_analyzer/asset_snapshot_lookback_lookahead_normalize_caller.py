@@ -1,4 +1,4 @@
-from .asset_snapshot_lookback_lookahead_normalize import asset_snapshot_lookback_lookahead_normalize_prepare
+from .asset_snapshot_lookback_lookahead_normalize import asset_snapshot_lookback_lookahead_normalize_prepare, asset_snapshot_lookback_lookahead_normalize_prepare_no_x_axis
 import numba as nb
 import numpy as np
 
@@ -28,5 +28,10 @@ def asset_snapshot_lookback_lookahead_normalize_prepare_single_by_date_string(ar
 @nb.njit(parallel=True)
 def asset_snapshot_lookback_lookahead_normalize_prepare_all(arr: np.ndarray, look_back: int, look_ahead: int, k_scaler: float):
     for i in nb.prange(look_back - 1, arr.shape[0] - look_ahead):
-        asset_snapshot_lookback_lookahead_normalize_prepare_single_by_index(arr, look_back, look_ahead, k_scaler, i)
+        asset_snapshot_lookback_lookahead_normalize_prepare(arr[i - look_back + 1 : i + look_ahead + 1], look_back, look_ahead, k_scaler)
 
+
+@nb.njit(parallel=True)
+def asset_snapshot_lookback_lookahead_normalize_prepare_all_no_x_axis(arr: np.ndarray, look_back: int, look_ahead: int, k_scaler: float):
+    for i in nb.prange(look_back - 1, arr.shape[0] - look_ahead):
+        asset_snapshot_lookback_lookahead_normalize_prepare_no_x_axis(arr[i - look_back + 1 : i + look_ahead + 1], look_back, look_ahead, k_scaler)
