@@ -24,3 +24,4 @@ Before writing any code, read all files listed below. They contain the authorita
 
 - @agents/ideas/idea_look_back_look_ahead.md — look-back / look-ahead windowing pattern: parameters, conventions (`last_candle`, `current_time`, `price_l`), inclusive vs exclusive date boundaries, loop / vectorized / chunked-vectorized modes, historic indicator boundary extension
 - @agents/ideas/idea_normalize_based_on_last_price_clip.md — price and time normalization inside look-back / look-ahead windows: core formula, hard vs tanh clipping, k derivation, vectorized 2-D application, time normalization vector, inverse transform
+- @agents/ideas/anchored_expanding_window.md — anchored expanding window pattern: left/right anchor, step, count, operation; expanding-window + running-accumulator logic, output ordering per anchor, numba implementation guidance
