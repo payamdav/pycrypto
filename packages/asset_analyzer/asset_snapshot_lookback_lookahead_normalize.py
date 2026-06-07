@@ -28,14 +28,16 @@ def asset_snapshot_lookback_lookahead_normalize_prepare(arr: np.ndarray, look_ba
     # features and labels vector. holds all in 1D vector. related items like sequences will store as a chunk on this vector. The following index helpers can be used to access different parts of the vector
     # f for feature. l for label. e for expanding window. si for start index. ei for end index. i for index. n for normalized
 
-    f_e_vwap_si, f_e_vwap_ei = 0, 23
-    f_e_n_imbalances_si, f_e_n_imbalances_ei = 24, 47
-    f_rsi_1_1_period_1_i, f_rsi_1_1_period_2_i, f_rsi_1_1_period_3_i = 48, 49, 50
-    l_e_vwap_si, l_e_vwap_ei = 51, 54
-    l_e_n_imbalances_si, l_e_n_imbalances_ei = 55, 58
-    
-    fl = np.zeros(58, dtype=np.float64)  # features and labels vector of size 58
+    ts_i = 0
+    f_e_vwap_si, f_e_vwap_ei = 1, 24
+    f_e_n_imbalances_si, f_e_n_imbalances_ei = 25, 48
+    f_rsi_1_1_period_1_i, f_rsi_1_1_period_2_i, f_rsi_1_1_period_3_i = 49, 50, 51
+    l_e_vwap_si, l_e_vwap_ei = 52, 55
+    l_e_n_imbalances_si, l_e_n_imbalances_ei = 56, 59
 
+    fl = np.zeros(60, dtype=np.float64)  # features and labels vector of size 60
+
+    fl[ts_i] = current_timestamp
     fl[f_rsi_1_1_period_1_i] = arr[look_back - 1, 9]  # rsi_1_1_period_1 of the last candle in the look_back period
     fl[f_rsi_1_1_period_2_i] = arr[look_back - 1, 10]  # rsi_1_1_period_2 of the last candle in the look_back period
     fl[f_rsi_1_1_period_3_i] = arr[look_back - 1, 11]  # rsi_1
