@@ -27,5 +27,8 @@ def asset_snapshot_lookback_lookahead_normalize_prepare_single_by_date_string(ar
 
 @nb.njit(parallel=True)
 def asset_snapshot_lookback_lookahead_normalize_prepare_all(arr: np.ndarray, look_back: int, look_ahead: int, k_scaler: float):
+    n_obs = arr.shape[0] - look_back - look_ahead + 1
+    result = np.zeros((n_obs, 60), dtype=np.float64)
     for i in nb.prange(look_back - 1, arr.shape[0] - look_ahead):
-        asset_snapshot_lookback_lookahead_normalize_prepare(arr[i - look_back + 1 : i + look_ahead + 1], look_back, look_ahead, k_scaler)
+        result[i - (look_back - 1)] = asset_snapshot_lookback_lookahead_normalize_prepare(arr[i - look_back + 1 : i + look_ahead + 1], look_back, look_ahead, k_scaler)
+    return result
