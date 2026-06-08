@@ -61,7 +61,7 @@ def asset_snapshot_lookback_lookahead_normalize_prepare(arr: np.ndarray, look_ba
             _vs_acc += arr[_rew_i, 6]      # aggressive sell volume
 
             _rew_i -= 1
-        _vwap = _quote_acc / _volume_acc if _volume_acc > 0 else 0
+        _vwap = _quote_acc / _volume_acc if _volume_acc > 0 else last_candle_price
         # vwap must be normalized as other prices above
         _vwap = k_scaler * (_vwap - last_candle_price) / last_candle_price  # normalize vwap price in the look_back period
         _vwap =1 if _vwap > 1 else -1 if _vwap < -1 else _vwap  # clip vwap to be between -1 and 1
@@ -85,7 +85,7 @@ def asset_snapshot_lookback_lookahead_normalize_prepare(arr: np.ndarray, look_ba
             _vb_acc += arr[_lew_i, 5]      # aggressive buy volume
             _vs_acc += arr[_lew_i, 6]      # aggressive sell volume
             _lew_i += 1
-        _vwap = _quote_acc / _volume_acc if _volume_acc > 0 else 0
+        _vwap = _quote_acc / _volume_acc if _volume_acc > 0 else last_candle_price
         _vwap = k_scaler * (_vwap - last_candle_price) / last_candle_price  # normalize vwap price in the look_ahead period
         _vwap = 1 if _vwap > 1 else -1 if _vwap < -1 else _vwap  # clip vwap to be between -1 and 1
         fl[l_e_vwap_si + _lew_j] = _vwap
