@@ -7,11 +7,15 @@ uploads every file, preserving the relative folder structure under a fixed
 prefix in the bucket. Each object is uploaded with the correct ``Content-Type``
 so the SPA serves cleanly when fetched over HTTP(S).
 
-Resulting layout (with the default prefix ``app``):
+The viewer is deployed per-study under ``{OBSERVATION_SET_NAME}/app/`` so each
+study folder is self-contained (its own reports/ AND its own viewer).
 
-    gs://payamdpycryptoreports/app/index.html
-    gs://payamdpycryptoreports/app/css/styles.css
-    gs://payamdpycryptoreports/app/js/config.js
+Resulting layout (with the default prefix
+``Lookback_Lookahead_LSTM_Sweep_v1/app``):
+
+    gs://payamdpycryptoreports/Lookback_Lookahead_LSTM_Sweep_v1/app/index.html
+    gs://payamdpycryptoreports/Lookback_Lookahead_LSTM_Sweep_v1/app/css/styles.css
+    gs://payamdpycryptoreports/Lookback_Lookahead_LSTM_Sweep_v1/app/js/config.js
     ...
 
 Uploads use the shared ``gcs_tools`` package
@@ -19,9 +23,9 @@ Uploads use the shared ``gcs_tools`` package
 ``gcs_json_key_file`` resolves credentials, ``write_file`` uploads each object.
 
 Usage:
-    python upload_web_app.py                 # upload web/ -> app/ prefix
-    python upload_web_app.py --dry-run       # list what would be uploaded
-    python upload_web_app.py --prefix web    # use a different bucket prefix
+    python upload_web_app.py                          # -> {study}/app/ prefix
+    python upload_web_app.py --dry-run                # list planned uploads
+    python upload_web_app.py --prefix OtherStudy/app  # deploy another study's viewer
 """
 
 import os
@@ -46,8 +50,12 @@ from gcs_tools import gcs_json_key_file, write_file  # noqa: E402
 #  Constants
 # --------------------------------------------------------------------------- #
 REPORT_BUCKET = "payamdpycryptoreports"
-WEB_PREFIX = "app"                       # bucket prefix the SPA is served under
-WEB_DIR = os.path.join(_THIS_DIR, "web")  # local source directory
+# Keep identical to the python study's OBSERVATION_SET_NAME so the viewer lands
+# inside the same study folder as that study's reports/.
+OBSERVATION_SET_NAME = "Lookback_Lookahead_LSTM_Sweep_v1"
+# The SPA is served per-study under "{OBSERVATION_SET_NAME}/app/".
+WEB_PREFIX = f"{OBSERVATION_SET_NAME}/app"
+WEB_DIR = os.path.join(_THIS_DIR, "web")  # local source directory (via __file__)
 
 # Explicit content types per extension. Falls back to mimetypes / octet-stream.
 CONTENT_TYPES = {

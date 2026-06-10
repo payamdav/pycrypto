@@ -43,13 +43,21 @@
   }
 
   function shortName(key) {
-    // strip set-name folder prefix + observation-set filename prefix
-    const file = key.split("/").pop();
-    return file.replace(cfg.REPORT_SUFFIX, "");
+    // strip the {study}/reports/ path + the "{SET}_" filename prefix.
+    let file = key.split("/").pop().replace(cfg.REPORT_SUFFIX, "");
+    const set = setName(key);
+    if (set && set !== "(root)" && file.startsWith(set + "_")) {
+      file = file.slice(set.length + 1);
+    }
+    return file;
   }
 
   function setName(key) {
+    // The study folder is the path up to (but excluding) the "reports/"
+    // segment, e.g. "Study/reports/Study_obs.json" -> "Study".
     const parts = key.split("/");
+    const ri = parts.indexOf("reports");
+    if (ri > 0) return parts.slice(0, ri).join("/");
     return parts.length > 1 ? parts[0] : "(root)";
   }
 
@@ -210,6 +218,10 @@
   function boot() {
     if (booted) return;
     booted = true;
+    // Show the active study (derived from config) before any report loads.
+    if (elSetName && cfg.STUDY_PREFIX) {
+      elSetName.textContent = cfg.STUDY_PREFIX;
+    }
     discover();
   }
   // Scripts are at the end of <body>; DOMContentLoaded may have already

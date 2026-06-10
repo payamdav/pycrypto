@@ -24,9 +24,11 @@ For every observation the script:
     3. Trains the modified LSTM (single linear output unit + tanh).
     4. Computes the full Eval_/Report_ metrics suite from the evaluation blueprint.
     5. Packages everything into the master JSON schema (Plotly-only visualizations).
-    6. Uploads the report to:
-         gs://payamdpycryptoreports/{Observation_Set_Name}/
+    6. Uploads the report (and the trained model params) to the study's
+       reports/ subfolder:
+         gs://payamdpycryptoreports/{Observation_Set_Name}/reports/
              {Observation_Set_Name}_{Observation_Name}.json
+             {Observation_Set_Name}_{Observation_Name}.pt
 
 Data spec      : agents/datasets/lookback_lookahead_fl.md
 Base model     : ai_chats/nn_model_for_lookback_lookahead.md
@@ -69,6 +71,10 @@ from gcs_tools import gcs_json_key_file, read_file, write_file  # noqa: E402
 DATA_BUCKET = "payamdprojectbucket"
 REPORT_BUCKET = "payamdpycryptoreports"
 OBSERVATION_SET_NAME = "Lookback_Lookahead_LSTM_Sweep_v1"
+# Reports and model params live under this subfolder of the study folder:
+#   gs://{REPORT_BUCKET}/{OBSERVATION_SET_NAME}/reports/
+REPORTS_SUBDIR = "reports"
+REPORTS_PREFIX = f"{OBSERVATION_SET_NAME}/{REPORTS_SUBDIR}"
 
 ASSETS = [
     "btcusdt",
@@ -476,7 +482,7 @@ def generate_and_upload_report(observation_name, metadata, model_arch,
         master_report["visualizations"][fig_name] = fig_obj.to_json()
 
     json_payload = json.dumps(master_report, indent=2)
-    file_path = (f"{OBSERVATION_SET_NAME}/"
+    file_path = (f"{REPORTS_PREFIX}/"
                  f"{OBSERVATION_SET_NAME}_{observation_name}.json")
     buffer = io.BytesIO(json_payload.encode("utf-8"))
     write_file(REPORT_BUCKET, file_path, buffer, content_type="application/json")
@@ -486,11 +492,12 @@ def generate_and_upload_report(observation_name, metadata, model_arch,
 def upload_model_params(observation_name, model):
     """Serialize the model state_dict and upload it next to the JSON report.
 
-    The params land in the same bucket folder as the observation's report:
-        gs://{REPORT_BUCKET}/{OBSERVATION_SET_NAME}/
+    The params land in the same bucket folder as the observation's report
+    (the study's reports/ subfolder):
+        gs://{REPORT_BUCKET}/{OBSERVATION_SET_NAME}/reports/
             {OBSERVATION_SET_NAME}_{observation_name}.pt
     """
-    file_path = (f"{OBSERVATION_SET_NAME}/"
+    file_path = (f"{REPORTS_PREFIX}/"
                  f"{OBSERVATION_SET_NAME}_{observation_name}.pt")
     buffer = io.BytesIO()
     # move to CPU before serializing so the checkpoint is portable
