@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lookback / Lookahead Observation Reports</title>
+  <link rel="preconnect" href="https://storage.googleapis.com" />
+  <link rel="stylesheet" href="css/styles.css" />
+  <!-- Plotly.js for interactive figure rendering -->
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js" charset="utf-8"></script>
+</head>
+<body>
+  <header class="app-header">
+    <div class="app-header__title">
+      <h1>Observation Reports</h1>
+      <p class="app-header__subtitle" id="setNameLabel">Lookback / Lookahead LSTM Sweep</p>
+    </div>
+    <div class="app-header__controls">
+      <button class="btn btn--nav" id="prevBtn" title="Previous report" disabled>&#8592; Prev</button>
+      <select class="report-select" id="reportSelect" aria-label="Select a report">
+        <option value="">Loading reports…</option>
+      </select>
+      <button class="btn btn--nav" id="nextBtn" title="Next report" disabled>Next &#8594;</button>
+      <button class="btn btn--ghost" id="reloadBtn" title="Reload report list">&#8635;</button>
+    </div>
+  </header>
+
+  <div class="source-bar">
+    <span class="source-bar__status" id="statusLabel">Initializing…</span>
+    <div class="source-bar__actions">
+      <label class="file-upload">
+        <input type="file" id="fileInput" accept="application/json,.json" />
+        <span>Upload JSON</span>
+      </label>
+      <div class="url-paste">
+        <input type="text" id="urlInput" placeholder="Paste a report URL…" />
+        <button class="btn btn--ghost" id="urlLoadBtn">Load URL</button>
+      </div>
+    </div>
+  </div>
+
+  <main class="content" id="content">
+    <div class="placeholder" id="placeholder">
+      <div class="placeholder__card">
+        <h2>No report loaded</h2>
+        <p>Select a report from the dropdown, or upload / paste a report JSON to begin.</p>
+      </div>
+    </div>
+  </main>
+
+  <footer class="app-footer">
+    <span id="footerInfo"></span>
+  </footer>
+
+  <script src="js/config.js"></script>
+  <script src="js/gcs.js"></script>
+  <script src="js/render.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

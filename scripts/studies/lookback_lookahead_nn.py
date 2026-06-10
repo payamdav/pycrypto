@@ -37,9 +37,11 @@ Report spec    : agents/ideas/headless_observation_reporting.md
 import io
 import os
 import sys
+import gc
 import json
 import time
 import datetime
+import argparse
 
 import numpy as np
 import torch
@@ -120,6 +122,11 @@ LR_SCHED_FACTOR = 0.5
 LR_SCHED_PATIENCE = 3
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+# When True the training fit loop is skipped (CPU smoke-test / dry run). The
+# untrained model's forward pass is still used to produce predictions so that
+# the entire evaluation + reporting + GCS plumbing is exercised end-to-end.
+NO_TRAIN = False
 
 # Bucketing for the [-1, 1] label space (21 bins, step 0.1)
 BIN_EDGES = np.round(np.arange(-1.0, 1.0 + 1e-9, 0.1), 1)   # 21 values
@@ -476,6 +483,25 @@ def generate_and_upload_report(observation_name, metadata, model_arch,
     print(f"  uploaded report -> gs://{REPORT_BUCKET}/{file_path}", flush=True)
 
 
+def upload_model_params(observation_name, model):
+    """Serialize the model state_dict and upload it next to the JSON report.
+
+    The params land in the same bucket folder as the observation's report:
+        gs://{REPORT_BUCKET}/{OBSERVATION_SET_NAME}/
+            {OBSERVATION_SET_NAME}_{observation_name}.pt
+    """
+    file_path = (f"{OBSERVATION_SET_NAME}/"
+                 f"{OBSERVATION_SET_NAME}_{observation_name}.pt")
+    buffer = io.BytesIO()
+    # move to CPU before serializing so the checkpoint is portable
+    state_dict = {k: v.detach().cpu() for k, v in model.state_dict().items()}
+    torch.save(state_dict, buffer)
+    buffer.seek(0)
+    write_file(REPORT_BUCKET, file_path, buffer,
+               content_type="application/octet-stream")
+    print(f"  uploaded params -> gs://{REPORT_BUCKET}/{file_path}", flush=True)
+
+
 # --------------------------------------------------------------------------- #
 #  Single observation pipeline
 # --------------------------------------------------------------------------- #
@@ -502,7 +528,23 @@ def run_observation(asset, label_idx, input_variety, fl):
     test_loader = make_loader(x_te, y_te, shuffle=False)
 
     model = LSTMRegressor(n_features=n_features)
-    history, epochs_done, train_secs = train_model(model, train_loader, val_loader)
+
+    if NO_TRAIN:
+        # Dry run: skip the fit loop entirely. The untrained model's forward
+        # pass still produces predictions so the evaluation/reporting pipeline
+        # is fully exercised. A single-point "history" keeps the convergence
+        # plot well-formed.
+        print("    [NO-TRAIN] skipping fit loop (dry run)", flush=True)
+        model.to(DEVICE)
+        train_criterion = nn.HuberLoss(delta=1.0)
+        train_loss = _eval_loss(model, train_loader, train_criterion)
+        val_loss = _eval_loss(model, val_loader, train_criterion)
+        history = {"train_loss": [train_loss], "val_loss": [val_loss]}
+        epochs_done = 0
+        train_secs = 0.0
+    else:
+        history, epochs_done, train_secs = train_model(
+            model, train_loader, val_loader)
 
     # ---- predictions ----
     y_true, y_pred = predict(model, test_loader)
@@ -559,7 +601,15 @@ def run_observation(asset, label_idx, input_variety, fl):
         "rows_val": int(x_va.shape[0]),
         "rows_test": int(x_te.shape[0]),
         "feature_count": n_features,
+        "no_train_dry_run": bool(NO_TRAIN),
     }
+    if NO_TRAIN:
+        # Mark the dry run prominently in metadata so the SPA / consumer never
+        # mistakes an untrained observation for a real training result.
+        metadata["dry_run"] = True
+        metadata["dry_run_note"] = (
+            "NO-TRAIN dry run: predictions come from an UNTRAINED model. "
+            "Metrics and visualizations are plumbing smoke-tests only.")
     metrics = {
         "global_metrics": {
             "test_huber_loss": tabular["huber"],
@@ -583,18 +633,55 @@ def run_observation(asset, label_idx, input_variety, fl):
     generate_and_upload_report(observation_name, metadata, model_arch,
                                telemetry, metrics, plotly_figs)
 
+    # ---- persist trained model parameters next to the report ----
+    if NO_TRAIN:
+        print("    [NO-TRAIN] skipping model-param upload (untrained weights)",
+              flush=True)
+    else:
+        upload_model_params(observation_name, model)
+
+    # ---- release per-observation memory before the next iteration ----
+    del (model, x_all, y_all, x_tr, y_tr, x_va, y_va, x_te, y_te,
+         train_loader, val_loader, test_loader, y_true, y_pred, plotly_figs)
+    gc.collect()
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+
 
 # --------------------------------------------------------------------------- #
 #  Main loop: 7 assets x 4 labels x 2 input varieties = 56 observations
 # --------------------------------------------------------------------------- #
 def main():
+    global NO_TRAIN
+
+    parser = argparse.ArgumentParser(
+        description="Lookback/Lookahead single-target LSTM sweep.")
+    # Accept both the exact '-notrain' spelling and the conventional
+    # '--notrain'. When set, the fit loop is skipped (CPU smoke-test).
+    parser.add_argument(
+        "-notrain", "--notrain", dest="notrain", action="store_true",
+        help=("Skip the training fit loop. Runs the whole pipeline (data load, "
+              "model build, evaluation, reporting, GCS upload) using the "
+              "untrained model's forward pass for a CPU dry run."))
+    args = parser.parse_args()
+    NO_TRAIN = bool(args.notrain)
+    if NO_TRAIN:
+        print("########## NO-TRAIN DRY RUN ENABLED ##########", flush=True)
+        print("  Training is skipped. Predictions use an UNTRAINED model.",
+              flush=True)
+
     gcs_json_key_file()  # resolve credentials once, before any GCS call
 
     total = len(ASSETS) * N_LABEL_VARIETIES * len(INPUT_VARIETIES)
     done = 0
     failures = []
 
+    # Outer loop over assets: each asset's raw fl_data blob is downloaded /
+    # loaded from GCS exactly ONCE per execution and reused across all 8 of
+    # that asset's observations (4 labels x 2 input varieties). Memory is
+    # released before moving on to the next asset.
     for asset in ASSETS:
+        fl = None
         try:
             print(f"\n########## Loading fl_data_{asset} ##########", flush=True)
             fl = load_fl_data(asset)
@@ -614,6 +701,10 @@ def main():
                 except Exception as exc:  # noqa: BLE001
                     print(f"  FAILED observation {tag}: {exc}", flush=True)
                     failures.append((asset, tag, str(exc)))
+
+        # release this asset's raw data before loading the next asset
+        del fl
+        gc.collect()
 
     print("\n========== SWEEP COMPLETE ==========", flush=True)
     print(f"  observations attempted: {total}", flush=True)
