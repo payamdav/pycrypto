@@ -65,6 +65,8 @@ def gcs_json_key_file(key_file: str = "gcp_service_account_key.json", secret_key
 
 > **RunPod:** the JSON key is materialized from the `GCP_KEY` RunPod secret (exposed as the `RUNPOD_SECRET_GCP_KEY` environment variable, or as a bare `GCP_KEY` variable on pod templates that omit the prefix). See `agents/packages/runpod_tools.md` for RunPod conventions.
 
+> **Secret value format (all environments):** the secret may hold the service-account key either as **raw JSON** or, recommended, as **base64-encoded JSON**. `gcs_json_key_file()` auto-detects which and writes valid JSON to disk. Base64 is strongly preferred for secret/env-var storage because raw multi-line JSON is frequently truncated or mangled by secret stores (newlines/quotes dropped), whereas base64 is single-line and uses only `A-Z a-z 0-9 + / =`. Encode with `base64 -w0 your-key.json` (or `python3 -c "import base64;print(base64.b64encode(open('your-key.json','rb').read()).decode())"`) and store the resulting single line as the secret value.
+
 ---
 
 ## `list_files`

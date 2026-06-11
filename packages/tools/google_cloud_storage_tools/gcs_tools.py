@@ -1,7 +1,39 @@
 import os
 import io
+import json
+import base64
 import google.cloud.storage
 import google.oauth2.service_account
+
+
+def _normalize_key_json(raw: str) -> str:
+    """Return a valid service-account JSON string from a raw secret value.
+
+    Secret stores (RunPod env vars / secrets, Colab/Kaggle userdata) frequently
+    mangle a raw multi-line JSON key — newlines, quotes or braces get dropped,
+    leaving a truncated, unparseable value. Storing the key **base64-encoded**
+    avoids this entirely: base64 is single-line and contains only
+    ``A-Z a-z 0-9 + / =``.
+
+    This accepts the value either as raw JSON or as base64-encoded JSON and
+    returns valid JSON text. If the value cannot be interpreted as either, it is
+    returned unchanged so the caller surfaces the original parse error.
+    """
+    s = raw.strip()
+    # Already valid JSON?
+    try:
+        json.loads(s)
+        return s
+    except ValueError:
+        pass
+    # base64-encoded JSON?
+    try:
+        decoded = base64.b64decode(s, validate=True).decode("utf-8")
+        json.loads(decoded)
+        return decoded
+    except Exception:  # noqa: BLE001 — fall through to returning the raw value
+        pass
+    return raw
 
 
 def _make_client() -> google.cloud.storage.Client:
@@ -25,7 +57,7 @@ def gcs_json_key_file(key_file: str = "gcp_service_account_key.json", secret_key
         json_str = google.colab.userdata.get(secret_key)
         path = os.path.join(os.getcwd(), key_file)
         with open(path, "w", encoding="utf-8") as f:
-            f.write(json_str)
+            f.write(_normalize_key_json(json_str))
         return os.path.abspath(path)
     except ImportError:
         pass
@@ -47,7 +79,7 @@ def gcs_json_key_file(key_file: str = "gcp_service_account_key.json", secret_key
         json_str = kaggle_secrets.UserSecretsClient().get_secret(secret_key)
         path = os.path.join(os.getcwd(), key_file)
         with open(path, "w", encoding="utf-8") as f:
-            f.write(json_str)
+            f.write(_normalize_key_json(json_str))
         return os.path.abspath(path)
 
     # Branch 3: RunPod — secrets are injected as env vars. RunPod's documented
@@ -60,7 +92,7 @@ def gcs_json_key_file(key_file: str = "gcp_service_account_key.json", secret_key
         if json_str:
             path = os.path.join(os.getcwd(), key_file)
             with open(path, "w", encoding="utf-8") as f:
-                f.write(json_str)
+                f.write(_normalize_key_json(json_str))
             return os.path.abspath(path)
 
     # Branch 4: Other (local file)
