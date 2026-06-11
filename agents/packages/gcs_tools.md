@@ -60,10 +60,10 @@ def gcs_json_key_file(key_file: str = "gcp_service_account_key.json", secret_key
 |-------------|--------------------------------------------------------------------|-----------------------------------------------------------------------------------|
 | Colab       | `import google.colab` succeeds                                     | Reads JSON string from `google.colab.userdata.get(secret_key)`, writes to disk, returns path |
 | Kaggle      | `KAGGLE_KERNEL_RUN_TYPE` env var is non-empty, or `import kaggle_secrets` succeeds | Reads JSON string from `kaggle_secrets.UserSecretsClient().get_secret(secret_key)`, writes to disk, returns path |
-| RunPod      | `RUNPOD_POD_ID` env var is set                                     | Reads JSON string from the `RUNPOD_SECRET_{secret_key}` env var (RunPod secret), writes to disk, returns path |
+| RunPod      | `RUNPOD_POD_ID` env var is set                                     | Reads JSON string from the `RUNPOD_SECRET_{secret_key}` env var, falling back to the bare `{secret_key}` env var if the prefixed one is unset; writes to disk, returns path |
 | Other       | None of the above matched                                          | Looks for `key_file` in `os.getcwd()`; returns its absolute path if found, raises `FileNotFoundError` otherwise |
 
-> **RunPod:** the JSON key is materialized from the `GCP_KEY` RunPod secret (exposed as the `RUNPOD_SECRET_GCP_KEY` environment variable). See `agents/packages/runpod_tools.md` for RunPod conventions.
+> **RunPod:** the JSON key is materialized from the `GCP_KEY` RunPod secret (exposed as the `RUNPOD_SECRET_GCP_KEY` environment variable, or as a bare `GCP_KEY` variable on pod templates that omit the prefix). See `agents/packages/runpod_tools.md` for RunPod conventions.
 
 ---
 

@@ -18,7 +18,7 @@
 ## How RunPod Exposes State
 
 - **Pod identity / networking** — RunPod sets environment variables on every pod it starts, including `RUNPOD_POD_ID`, `RUNPOD_PUBLIC_IP`, and `RUNPOD_GPU_COUNT`. The presence of `RUNPOD_POD_ID` is the canonical signal that the process is running on RunPod.
-- **Secrets** — Every secret configured for a pod is injected into the environment as a variable named `RUNPOD_SECRET_{secret_key}`. For example, a secret named `GCP_KEY` is available as `RUNPOD_SECRET_GCP_KEY`.
+- **Secrets** — RunPod's documented convention injects every configured secret into the environment as a variable named `RUNPOD_SECRET_{secret_key}` (e.g. a secret named `GCP_KEY` is available as `RUNPOD_SECRET_GCP_KEY`). Some pod templates instead expose secrets under their **bare name** (plain `GCP_KEY`). `get_secret` and `gcs_json_key_file` therefore check the prefixed name first and fall back to the bare name.
 
 ---
 
@@ -67,10 +67,13 @@ RUNPOD_POD_ID=abc123 RUNPOD_PUBLIC_IP=1.2.3.4 RUNPOD_GPU_COUNT=2
 def get_secret(secret_key: str) -> str:
 ```
 
-Returns the value of the RunPod secret `secret_key` by reading the
-`RUNPOD_SECRET_{secret_key}` environment variable.
+Returns the value of the RunPod secret `secret_key`. Reads the
+`RUNPOD_SECRET_{secret_key}` environment variable first, then falls back to the
+bare `{secret_key}` variable (some pod templates inject secrets without the
+`RUNPOD_SECRET_` prefix).
 
-**Raises:** `KeyError` if the secret is not present in the environment.
+**Raises:** `KeyError` if the secret is present under neither the prefixed nor
+the bare name.
 
 ```python
 api_key = get_secret("RUN_POD_API_KEY")
@@ -88,7 +91,9 @@ def pod_self_terminate() -> None:
 Stops and **terminates** (destroys, releasing compute) the current RunPod pod.
 
 - Resolves the pod id from `RUNPOD_POD_ID`.
-- Resolves the RunPod API key from the `RUN_POD_API_KEY` secret (via `get_secret`).
+- Resolves the RunPod API key via `get_secret`, trying the `RUN_POD_API_KEY`
+  secret first and then the built-in `RUNPOD_API_KEY` variable (each checked
+  under both its `RUNPOD_SECRET_`-prefixed and bare name).
 - Issues a `podTerminate` mutation against the RunPod GraphQL API
   (`https://api.runpod.io/graphql`).
 

@@ -50,9 +50,13 @@ def gcs_json_key_file(key_file: str = "gcp_service_account_key.json", secret_key
             f.write(json_str)
         return os.path.abspath(path)
 
-    # Branch 3: RunPod — secrets are injected as env vars "RUNPOD_SECRET_{name}"
+    # Branch 3: RunPod — secrets are injected as env vars. RunPod's documented
+    # convention prefixes them with "RUNPOD_SECRET_", but some pod templates
+    # expose them under their bare name (e.g. plain "GCP_KEY"). Try the
+    # prefixed name first, then fall back to the bare key name.
     if os.environ.get("RUNPOD_POD_ID"):
-        json_str = os.environ.get(f"RUNPOD_SECRET_{secret_key}")
+        json_str = (os.environ.get(f"RUNPOD_SECRET_{secret_key}")
+                    or os.environ.get(secret_key))
         if json_str:
             path = os.path.join(os.getcwd(), key_file)
             with open(path, "w", encoding="utf-8") as f:

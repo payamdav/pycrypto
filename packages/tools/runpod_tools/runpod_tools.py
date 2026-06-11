@@ -41,19 +41,24 @@ def is_running_environment_runpod():
 def get_secret(secret_key: str) -> str:
     """Return the value of a RunPod secret.
 
-    RunPod exposes every secret to the pod as an environment variable named
-    ``RUNPOD_SECRET_{secret_key}``. This reads that variable and returns its
-    value.
+    RunPod's documented convention exposes every secret to the pod as an
+    environment variable named ``RUNPOD_SECRET_{secret_key}``. Some pod
+    templates, however, inject secrets under their bare name (e.g. plain
+    ``GCP_KEY``). This reads the prefixed variable first and falls back to the
+    bare ``secret_key`` name, returning the first one that is set.
 
     Raises:
-        KeyError: if the secret is not present in the environment.
+        KeyError: if the secret is not present in the environment under either
+            the prefixed or the bare name.
     """
     env_name = f"{_SECRET_ENV_PREFIX}{secret_key}"
     value = os.environ.get(env_name)
     if value is None:
+        value = os.environ.get(secret_key)
+    if value is None:
         raise KeyError(
             f"RunPod secret '{secret_key}' not found "
-            f"(expected environment variable '{env_name}'). "
+            f"(expected environment variable '{env_name}' or '{secret_key}'). "
             "Make sure the secret is configured for this pod."
         )
     return value
@@ -79,7 +84,24 @@ def pod_self_terminate() -> None:
             "(RUNPOD_POD_ID is not set)."
         )
 
-    api_key = get_secret("RUN_POD_API_KEY")
+    # The RunPod API key is exposed under different names depending on how the
+    # pod is configured: the documented secret name is "RUN_POD_API_KEY", but
+    # RunPod also commonly injects a built-in "RUNPOD_API_KEY" variable. Try
+    # each candidate (via get_secret, which also checks the RUNPOD_SECRET_
+    # prefix) and use the first one that resolves.
+    api_key = None
+    for candidate in ("RUN_POD_API_KEY", "RUNPOD_API_KEY"):
+        try:
+            api_key = get_secret(candidate)
+            break
+        except KeyError:
+            continue
+    if api_key is None:
+        raise KeyError(
+            "RunPod API key not found. Expected one of the environment "
+            "variables RUNPOD_SECRET_RUN_POD_API_KEY, RUN_POD_API_KEY, "
+            "RUNPOD_SECRET_RUNPOD_API_KEY or RUNPOD_API_KEY to be set."
+        )
 
     query = "mutation ($input: PodTerminateInput!) { podTerminate(input: $input) }"
     payload = {"query": query, "variables": {"input": {"podId": pod_id}}}
