@@ -13,7 +13,7 @@ def _make_client() -> google.cloud.storage.Client:
 def gcs_json_key_file(key_file: str = "gcp_service_account_key.json", secret_key: str = "GCP_KEY") -> str:
     """Resolve the path to a GCP service account JSON key file.
 
-    Detection order: Google Colab → Kaggle → other (local file).
+    Detection order: Google Colab → Kaggle → RunPod → other (local file).
     """
     # Branch 1: Google Colab
     try:
@@ -50,7 +50,16 @@ def gcs_json_key_file(key_file: str = "gcp_service_account_key.json", secret_key
             f.write(json_str)
         return os.path.abspath(path)
 
-    # Branch 3: Other (local file)
+    # Branch 3: RunPod — secrets are injected as env vars "RUNPOD_SECRET_{name}"
+    if os.environ.get("RUNPOD_POD_ID"):
+        json_str = os.environ.get(f"RUNPOD_SECRET_{secret_key}")
+        if json_str:
+            path = os.path.join(os.getcwd(), key_file)
+            with open(path, "w", encoding="utf-8") as f:
+                f.write(json_str)
+            return os.path.abspath(path)
+
+    # Branch 4: Other (local file)
     path = os.path.join(os.getcwd(), key_file)
     if os.path.exists(path):
         return os.path.abspath(path)
