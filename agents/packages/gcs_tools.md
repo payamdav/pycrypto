@@ -5,7 +5,7 @@
 | Key             | Value                                        |
 |-----------------|----------------------------------------------|
 | Package path    | `packages/tools/google_cloud_storage_tools/` |
-| Purpose         | GCS utility functions with automatic credential resolution across Google Colab, Kaggle, and other Python environments. |
+| Purpose         | GCS utility functions with automatic credential resolution across Google Colab, Kaggle, RunPod, and other Python environments. |
 
 | Exported function   | Description                                           |
 |---------------------|-------------------------------------------------------|
@@ -60,7 +60,12 @@ def gcs_json_key_file(key_file: str = "gcp_service_account_key.json", secret_key
 |-------------|--------------------------------------------------------------------|-----------------------------------------------------------------------------------|
 | Colab       | `import google.colab` succeeds                                     | Reads JSON string from `google.colab.userdata.get(secret_key)`, writes to disk, returns path |
 | Kaggle      | `KAGGLE_KERNEL_RUN_TYPE` env var is non-empty, or `import kaggle_secrets` succeeds | Reads JSON string from `kaggle_secrets.UserSecretsClient().get_secret(secret_key)`, writes to disk, returns path |
-| Other       | Neither of the above matched                                       | Looks for `key_file` in `os.getcwd()`; returns its absolute path if found, raises `FileNotFoundError` otherwise |
+| RunPod      | `RUNPOD_POD_ID` env var is set                                     | Reads JSON string from the `RUNPOD_SECRET_{secret_key}` env var, falling back to the bare `{secret_key}` env var if the prefixed one is unset; writes to disk, returns path |
+| Other       | None of the above matched                                          | Looks for `key_file` in `os.getcwd()`; returns its absolute path if found, raises `FileNotFoundError` otherwise |
+
+> **RunPod:** the JSON key is materialized from the `GCP_KEY` RunPod secret (exposed as the `RUNPOD_SECRET_GCP_KEY` environment variable, or as a bare `GCP_KEY` variable on pod templates that omit the prefix). See `agents/packages/runpod_tools.md` for RunPod conventions.
+
+> **Secret value format (all environments):** the secret may hold the service-account key either as **raw JSON** or, recommended, as **base64-encoded JSON**. `gcs_json_key_file()` auto-detects which and writes valid JSON to disk. Base64 is strongly preferred for secret/env-var storage because raw multi-line JSON is frequently truncated or mangled by secret stores (newlines/quotes dropped), whereas base64 is single-line and uses only `A-Z a-z 0-9 + / =`. Encode with `base64 -w0 your-key.json` (or `python3 -c "import base64;print(base64.b64encode(open('your-key.json','rb').read()).decode())"`) and store the resulting single line as the secret value.
 
 ---
 
@@ -161,5 +166,5 @@ write_file(BUCKET, "uploads/hello.txt", buffer, content_type="text/plain")
 
 - **Always call `gcs_json_key_file()` first.** Every script or notebook that uses `list_files`, `read_file`, `save_file`, or `write_file` must call `gcs_json_key_file()` before any of those functions. Skipping this step will cause authentication failures because the GCS client cannot locate the service account key.
 - The package directory name (`google_cloud_storage_tools`) contains hyphens and cannot be imported using dot notation. Use `sys.path` manipulation or install the dependencies from `requirements.txt` and import `gcs_tools` directly.
-- Credentials are resolved automatically by `gcs_json_key_file` based on the detected runtime environment (Colab, Kaggle, or local file). Callers never need to handle the key file or credential object directly.
+- Credentials are resolved automatically by `gcs_json_key_file` based on the detected runtime environment (Colab, Kaggle, RunPod, or local file). Callers never need to handle the key file or credential object directly.
 - Each function call creates a fresh `google.cloud.storage.Client` instance — there is no client caching or connection pooling across calls.

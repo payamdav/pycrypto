@@ -19,7 +19,8 @@ Before writing any code, read all files listed below. They contain the authorita
 
 ### Packages
 
-- @agents/packages/gcs_tools.md — GCS tools package (`packages/tools/google_cloud_storage_tools/`): exported functions, setup/import instructions, credential resolution, and usage examples
+- @agents/packages/gcs_tools.md — GCS tools package (`packages/tools/google_cloud_storage_tools/`): exported functions, setup/import instructions, credential resolution (Colab/Kaggle/RunPod/local), and usage examples
+- @agents/packages/runpod_tools.md — RunPod tools package (`packages/tools/runpod_tools/`): environment detection (`is_running_environment_runpod`), secret retrieval (`get_secret`), and pod self-termination (`pod_self_terminate`); RunPod env-var and secret conventions
 
 ### Ideas
 

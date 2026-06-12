@@ -3,3 +3,4 @@ torch
 plotly
 google-cloud-storage
 google-auth
+requests

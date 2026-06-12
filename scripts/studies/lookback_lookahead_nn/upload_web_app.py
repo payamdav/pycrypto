@@ -37,7 +37,7 @@ import mimetypes
 #  Repository / package import bootstrap
 # --------------------------------------------------------------------------- #
 _THIS_DIR = os.path.dirname(os.path.abspath(__file__))
-_REPO_ROOT = os.path.abspath(os.path.join(_THIS_DIR, "..", ".."))
+_REPO_ROOT = os.path.abspath(os.path.join(_THIS_DIR, "..", "..", ".."))
 _GCS_TOOLS_DIR = os.path.join(
     _REPO_ROOT, "packages", "tools", "google_cloud_storage_tools"
 )
