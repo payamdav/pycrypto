@@ -43,8 +43,17 @@ python3 -m pip install --upgrade pip
 python3 -m pip install -r "${STUDY_SUBDIR}/requirements.txt"
 
 # 4. Run the study.
-echo "Running lookback_lookahead_nn.py ..."
-python3 "${STUDY_SUBDIR}/lookback_lookahead_nn.py"
+# Original sequential trainer (kept for reference):
+# echo "Running lookback_lookahead_nn.py ..."
+# python3 "${STUDY_SUBDIR}/lookback_lookahead_nn.py"
+#
+# Parallel GPU-resident trainer (active): loads all asset data once, keeps it
+# resident on the GPU, and trains the 56 independent models concurrently via
+# CUDA streams. Per-model training procedure (and therefore results) is
+# identical to the sequential trainer. Extra args (e.g. --concurrency N,
+# -notrain) are forwarded through "$@".
+echo "Running lookback_lookahead_nn_parallel.py ..."
+python3 "${STUDY_SUBDIR}/lookback_lookahead_nn_parallel.py" "$@"
 
 # 5. Upload the Observation Report Viewer SPA.
 echo "Running upload_web_app.py ..."
