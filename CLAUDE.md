@@ -9,6 +9,7 @@ Before writing any code, read all files listed below. They contain the authorita
 - @agents/general/paths_and_files.md — repository folder structure, file placement rules, and decision logic for where to create new files
 - @agents/general/rules.md — mandatory rules for all agents: dependency management, notebook pip installs, requirements.txt, repository cloning in notebooks
 - @agents/general/indicators.md — indicators package: available functions (ma, wma, vwma, rsi_1_1, stddev, rolling_robust_z_score), signatures, behavior, and usage examples
+- @agents/general/nn_training_performance.md — neural-net training performance techniques: free speedups (GPU-resident data, fewer host↔device syncs, cudnn.benchmark, CUDA-stream concurrency for many small models, separate load/compute timing) vs result-changing choices (batch size, seeds, architecture, optimizer); apply whenever training/evaluating nets without altering the learning result
 
 ### Datasets
 
