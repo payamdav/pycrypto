@@ -42,18 +42,28 @@ echo "Installing requirements ..."
 python3 -m pip install --upgrade pip
 python3 -m pip install -r "${STUDY_SUBDIR}/requirements.txt"
 
-# 4. Run the study.
-# Original sequential trainer (kept for reference):
-# echo "Running lookback_lookahead_nn.py ..."
-# python3 "${STUDY_SUBDIR}/lookback_lookahead_nn.py"
+# 4. Run the study. THREE trainer options are available — exactly ONE is active
+#    below; uncomment whichever you want and comment out the others. All three
+#    train the SAME 56 observations and produce IDENTICAL reports; they differ
+#    only in HOW the work is scheduled on the hardware. All forward extra args
+#    (e.g. --concurrency N, -notrain) through "$@".
 #
-# Parallel GPU-resident trainer (active): loads all asset data once, keeps it
-# resident on the GPU, and trains the 56 independent models concurrently via
-# CUDA streams. Per-model training procedure (and therefore results) is
-# identical to the sequential trainer. Extra args (e.g. --concurrency N,
-# -notrain) are forwarded through "$@".
+# Option A — sequential trainer: one observation at a time, simplest to reason
+# about. No concurrency.
+# echo "Running lookback_lookahead_nn.py ..."
+# python3 "${STUDY_SUBDIR}/lookback_lookahead_nn.py" "$@"
+#
+# Option B — CUDA streams trainer (ACTIVE): single process, loads all asset data
+# once, keeps it resident on the GPU, and trains the 56 independent models
+# concurrently via CUDA streams (one stream per model within a wave).
 echo "Running lookback_lookahead_nn_parallel.py ..."
 python3 "${STUDY_SUBDIR}/lookback_lookahead_nn_parallel.py" "$@"
+#
+# Option C — torch.multiprocessing trainer: loads all asset data once in the
+# parent, then spawns a pool of --concurrency N worker processes that share the
+# single GPU (OS time-slicing / MPS). Per-model procedure is identical.
+# echo "Running lookback_lookahead_nn_mp.py ..."
+# python3 "${STUDY_SUBDIR}/lookback_lookahead_nn_mp.py" "$@"
 
 # 5. Upload the Observation Report Viewer SPA.
 echo "Running upload_web_app.py ..."
