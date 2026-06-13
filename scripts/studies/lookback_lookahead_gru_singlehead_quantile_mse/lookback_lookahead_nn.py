@@ -52,6 +52,8 @@ from torch.utils.data import DataLoader, TensorDataset
 
 import plotly.graph_objects as go
 
+from sklearn.preprocessing import QuantileTransformer
+
 # --------------------------------------------------------------------------- #
 #  Repository / package import bootstrap
 # --------------------------------------------------------------------------- #
@@ -71,7 +73,10 @@ from gcs_tools import gcs_json_key_file, read_file, write_file  # noqa: E402
 DATA_BUCKET = "payamdprojectbucket"
 REPORT_BUCKET = "payamdpycryptoreports"
 LOCAL_DATA_DIR = os.path.expanduser("~/data")
-OBSERVATION_SET_NAME = "Lookback_Lookahead_LSTM_Sweep_v1"
+OBSERVATION_SET_NAME = "lookback_lookahead_gru_singlehead_quantile_mse"
+MODEL_TYPE = "GRU_Base_2_64_SingleHead_Quantile_MSE"
+LOSS_NAME = "MSE Loss"
+LABEL_TRANSFORM_NAME = "quantile_uniform_scaled[-1,1]"
 # Reports and model params live under this subfolder of the study folder:
 #   gs://{REPORT_BUCKET}/{OBSERVATION_SET_NAME}/reports/
 REPORTS_SUBDIR = "reports"
@@ -143,30 +148,35 @@ N_BINS = len(BIN_EDGES)
 # --------------------------------------------------------------------------- #
 #  Model
 # --------------------------------------------------------------------------- #
-class LSTMRegressor(nn.Module):
-    """Lean 2-layer LSTM with a single tanh-bounded regression output.
-
-    Mirrors the base architecture (64 units, two LSTM layers, dropout 0.3,
-    tanh output) but the output head emits a single unit instead of 8.
-    """
+class GRURegressor(nn.Module):
+    """Lean 2-layer GRU with a single tanh-bounded regression output."""
 
     def __init__(self, n_features: int, hidden: int = HIDDEN_UNITS,
                  dropout: float = DROPOUT):
         super().__init__()
-        self.lstm1 = nn.LSTM(n_features, hidden, batch_first=True)
+        self.gru1 = nn.GRU(n_features, hidden, batch_first=True)
         self.drop1 = nn.Dropout(dropout)
-        self.lstm2 = nn.LSTM(hidden, hidden, batch_first=True)
+        self.gru2 = nn.GRU(hidden, hidden, batch_first=True)
         self.drop2 = nn.Dropout(dropout)
         self.head = nn.Linear(hidden, 1)
 
     def forward(self, x):
-        # x: (batch, seq_len, n_features)
-        seq, _ = self.lstm1(x)          # return_sequences=True
+        seq, _ = self.gru1(x)
         seq = self.drop1(seq)
-        seq, (h_n, _) = self.lstm2(seq)  # final hidden state of layer 2
-        last = self.drop2(h_n[-1])      # (batch, hidden)
-        out = torch.tanh(self.head(last))  # (batch, 1) bounded in (-1, 1)
-        return out.squeeze(-1)          # (batch,)
+        seq, h_n = self.gru2(seq)       # GRU returns h_n (no cell state)
+        last = self.drop2(h_n[-1])
+        out = torch.tanh(self.head(last))
+        return out.squeeze(-1)
+
+
+def build_model(n_features: int):
+    """Construct the study's RNN regressor."""
+    return GRURegressor(n_features=n_features)
+
+
+def make_criterion():
+    """The study's training loss."""
+    return nn.MSELoss()
 
 
 # --------------------------------------------------------------------------- #
@@ -190,6 +200,37 @@ def load_fl_data(asset: str) -> np.ndarray:
             fh.write(data_bytes)
         fl = np.load(local_path)
     return np.ascontiguousarray(fl, dtype=np.float64)
+
+QUANTILE_N = 1000  # number of quantile knots for the transformer
+
+
+def fit_label_transform(y_train: np.ndarray) -> QuantileTransformer:
+    """Fit a uniform QuantileTransformer on the TRAIN-split label column."""
+    n = y_train.shape[0]
+    qt = QuantileTransformer(
+        output_distribution="uniform",
+        n_quantiles=min(QUANTILE_N, n),
+        subsample=min(n, 1_000_000),
+        random_state=42,
+    )
+    qt.fit(y_train.reshape(-1, 1))
+    return qt
+
+
+def transform_labels(qt: QuantileTransformer, y: np.ndarray) -> np.ndarray:
+    """Map labels to a (near) uniform distribution in [-1, 1] for training."""
+    u = qt.transform(y.reshape(-1, 1)).ravel()   # uniform in [0, 1]
+    return (u * 2.0 - 1.0).astype(np.float64)     # -> [-1, 1]
+
+
+def inverse_transform_labels(qt: QuantileTransformer,
+                             y_scaled: np.ndarray) -> np.ndarray:
+    """Invert transform_labels: predictions in [-1, 1] -> original label space."""
+    u = (np.clip(y_scaled, -1.0, 1.0) + 1.0) / 2.0   # back to [0, 1]
+    orig = qt.inverse_transform(u.reshape(-1, 1)).ravel()
+    return orig.astype(np.float64)
+
+
 
 
 def build_features(fl: np.ndarray, input_variety: str) -> np.ndarray:
@@ -246,7 +287,7 @@ def train_model(model, train_loader, val_loader):
     Returns (history, epochs_completed, train_seconds).
     """
     model.to(DEVICE)
-    criterion = nn.HuberLoss(delta=1.0)
+    criterion = make_criterion()
     optimizer = torch.optim.AdamW(
         model.parameters(), lr=LEARNING_RATE, weight_decay=WEIGHT_DECAY
     )
@@ -420,7 +461,7 @@ def fig_convergence(history) -> go.Figure:
     fig.add_trace(go.Scatter(x=epochs, y=history["val_loss"],
                              mode="lines+markers", name="Validation Loss"))
     fig.update_layout(title="Eval_Convergence_Plot",
-                      xaxis_title="Epoch", yaxis_title="Huber Loss")
+                      xaxis_title="Epoch", yaxis_title=LOSS_NAME)
     return fig
 
 
@@ -544,11 +585,15 @@ def run_observation(asset, label_idx, input_variety, fl):
     x_te, y_te = x_all[te_s:te_e], y_all[te_s:te_e]
     ts_te = ts_all[te_s:te_e]
 
-    train_loader = make_loader(x_tr, y_tr, shuffle=True)
-    val_loader = make_loader(x_va, y_va, shuffle=False)
-    test_loader = make_loader(x_te, y_te, shuffle=False)
+    qt = fit_label_transform(y_tr)
+    y_tr_t = transform_labels(qt, y_tr)
+    y_va_t = transform_labels(qt, y_va)
 
-    model = LSTMRegressor(n_features=n_features)
+    train_loader = make_loader(x_tr, y_tr_t, shuffle=True)
+    val_loader = make_loader(x_va, y_va_t, shuffle=False)
+    test_loader = make_loader(x_te, y_te, shuffle=False)   # ORIGINAL labels
+
+    model = build_model(n_features)
 
     if NO_TRAIN:
         # Dry run: skip the fit loop entirely. The untrained model's forward
@@ -557,7 +602,7 @@ def run_observation(asset, label_idx, input_variety, fl):
         # plot well-formed.
         print("    [NO-TRAIN] skipping fit loop (dry run)", flush=True)
         model.to(DEVICE)
-        train_criterion = nn.HuberLoss(delta=1.0)
+        train_criterion = make_criterion()
         train_loss = _eval_loss(model, train_loader, train_criterion)
         val_loss = _eval_loss(model, val_loader, train_criterion)
         history = {"train_loss": [train_loss], "val_loss": [val_loss]}
@@ -569,6 +614,7 @@ def run_observation(asset, label_idx, input_variety, fl):
 
     # ---- predictions ----
     y_true, y_pred = predict(model, test_loader)
+    y_pred = inverse_transform_labels(qt, y_pred)   # transformed -> original
 
     # ---- Eval_ modules ----
     tabular = eval_tabular_error_metrics(y_true, y_pred)
@@ -606,7 +652,7 @@ def run_observation(asset, label_idx, input_variety, fl):
         },
     }
     model_arch = {
-        "model_type": "LSTM_Base_2_64_SingleHead",
+        "model_type": MODEL_TYPE,
         "input_features": INPUT_FEATURE_NAMES[input_variety],
         "sequence_length": SEQ_LEN,
         "target_labels": [f"l_e_vwap[{label_idx}]"],
@@ -623,6 +669,7 @@ def run_observation(asset, label_idx, input_variety, fl):
         "rows_test": int(x_te.shape[0]),
         "feature_count": n_features,
         "no_train_dry_run": bool(NO_TRAIN),
+        "label_transform": LABEL_TRANSFORM_NAME,
     }
     if NO_TRAIN:
         # Mark the dry run prominently in metadata so the SPA / consumer never

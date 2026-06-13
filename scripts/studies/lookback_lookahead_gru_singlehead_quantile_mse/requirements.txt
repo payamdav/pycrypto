@@ -1,0 +1,7 @@
+numpy
+torch
+plotly
+scikit-learn
+google-cloud-storage
+google-auth
+requests
