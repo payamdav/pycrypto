@@ -267,6 +267,8 @@ def run_observation_mp(asset, label_idx, input_variety, fl):
         "Eval_Prediction_Heatmap": base.fig_prediction_heatmap(conf_matrix),
         "Eval_Rolling_Temporal_Error": base.fig_rolling_temporal_error(
             roll_times, roll_vals),
+        "Label_Histogram_Before_Transform": base.fig_label_histogram_before_transform(y_tr),
+        "Label_Histogram_After_Transform": base.fig_label_histogram_after_transform(y_tr_t),
     }
 
     start_ms = int(ts_all[0])

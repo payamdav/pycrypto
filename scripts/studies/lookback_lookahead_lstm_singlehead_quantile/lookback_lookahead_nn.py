@@ -516,6 +516,38 @@ def fig_rolling_temporal_error(times, vals) -> go.Figure:
     return fig
 
 
+def fig_label_histogram_before_transform(y_train: np.ndarray) -> go.Figure:
+    fig = go.Figure()
+    fig.add_trace(go.Histogram(
+        x=y_train,
+        xbins=dict(start=-1.0, end=1.0, size=0.1),
+        name="Before Transform",
+    ))
+    fig.update_layout(
+        title="Label Histogram — Before Quantile Transform (Train Set)",
+        xaxis_title="Label value [-1, 1]",
+        yaxis_title="Count",
+        xaxis=dict(range=[-1.1, 1.1]),
+    )
+    return fig
+
+
+def fig_label_histogram_after_transform(y_train_t: np.ndarray) -> go.Figure:
+    fig = go.Figure()
+    fig.add_trace(go.Histogram(
+        x=y_train_t,
+        xbins=dict(start=-1.0, end=1.0, size=0.1),
+        name="After Transform",
+    ))
+    fig.update_layout(
+        title="Label Histogram — After Quantile Transform (Train Set)",
+        xaxis_title="Transformed label value [-1, 1]",
+        yaxis_title="Count",
+        xaxis=dict(range=[-1.1, 1.1]),
+    )
+    return fig
+
+
 # --------------------------------------------------------------------------- #
 #  Report packaging & GCS export (headless_observation_reporting.md)
 # --------------------------------------------------------------------------- #
@@ -642,6 +674,8 @@ def run_observation(asset, label_idx, input_variety, fl):
         "Eval_Prediction_Heatmap": fig_prediction_heatmap(conf_matrix),
         "Eval_Rolling_Temporal_Error": fig_rolling_temporal_error(
             roll_times, roll_vals),
+        "Label_Histogram_Before_Transform": fig_label_histogram_before_transform(y_tr),
+        "Label_Histogram_After_Transform": fig_label_histogram_after_transform(y_tr_t),
     }
 
     # ---- metadata / telemetry / metrics payloads ----

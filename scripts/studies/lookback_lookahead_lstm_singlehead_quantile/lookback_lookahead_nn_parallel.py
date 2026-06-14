@@ -143,6 +143,7 @@ class Observation:
         # transform train/val (the model trains + early-stops on transformed
         # labels), and keep the TEST labels in ORIGINAL space.
         self.qt = base.fit_label_transform(y_all[tr_s:tr_e])
+        self.y_tr_raw = y_all[tr_s:tr_e].astype(np.float64).copy()
         self.x_tr = to_dev(x_all[tr_s:tr_e])
         self.y_tr = to_dev(base.transform_labels(self.qt, y_all[tr_s:tr_e]))
         self.x_va = to_dev(x_all[va_s:va_e])
@@ -380,6 +381,7 @@ def report_observation(obs):
     print(f"\n=== Reporting: {observation_name} ===", flush=True)
 
     y_true = obs.y_te.cpu().numpy()                       # original
+    y_tr_t = obs.y_tr.cpu().numpy().astype(np.float64)
     y_pred = _predict_resident(obs.model, obs.x_te)       # transformed space
     y_pred = base.inverse_transform_labels(obs.qt, y_pred)  # -> original
     ts_te = obs.ts_te
@@ -404,6 +406,8 @@ def report_observation(obs):
         "Eval_Prediction_Heatmap": base.fig_prediction_heatmap(conf_matrix),
         "Eval_Rolling_Temporal_Error": base.fig_rolling_temporal_error(
             roll_times, roll_vals),
+        "Label_Histogram_Before_Transform": base.fig_label_histogram_before_transform(obs.y_tr_raw),
+        "Label_Histogram_After_Transform": base.fig_label_histogram_after_transform(y_tr_t),
     }
 
     metadata = {

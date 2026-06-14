@@ -65,6 +65,16 @@
     if (elPlaceholder) elPlaceholder.style.display = "none";
   }
 
+  function showError(message) {
+    showContentArea();
+    elContent.innerHTML =
+      '<div class="error-card" style="color:var(--danger,#ff6b6b);' +
+      'background:rgba(255,107,107,0.08);border:1px solid var(--danger,#ff6b6b);' +
+      'border-radius:8px;padding:1.5rem 2rem;margin:2rem auto;max-width:720px;' +
+      'font-family:monospace;white-space:pre-wrap">' +
+      '<strong>Error</strong>\n' + message + "</div>";
+  }
+
   // ---- dropdown population ---------------------------------------------
   function populateSelect() {
     elSelect.innerHTML = "";
@@ -113,7 +123,8 @@
       renderInto(report, key);
       setStatus(`Loaded <code>${key}</code>`);
     } catch (err) {
-      setStatus(`Error loading report`, false);
+      setStatus(`Error loading report: ${err.message}`, false);
+      showError(`Failed to load report:\n  Key: ${key}\n  Error: ${err.message}`);
       toast(`Failed to load ${key}: ${err.message}`);
     }
     syncNavButtons();
@@ -127,7 +138,8 @@
       renderInto(report, url);
       setStatus(`Loaded external report`);
     } catch (err) {
-      setStatus("Error loading URL", false);
+      setStatus(`Error loading URL: ${err.message}`, false);
+      showError(`Failed to load URL:\n  URL: ${url}\n  Error: ${err.message}`);
       toast(`Failed to load URL: ${err.message}`);
     }
     syncNavButtons();
@@ -163,6 +175,10 @@
       setStatus(
         "Could not list bucket. Use upload / URL paste to load a report.",
         false
+      );
+      showError(
+        "Could not discover reports from the bucket.\n" + err.message +
+        "\n\nUse the 'Upload JSON' button or 'Paste a report URL' below."
       );
       toast(err.message);
     }

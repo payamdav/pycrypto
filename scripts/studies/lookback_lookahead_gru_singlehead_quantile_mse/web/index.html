@@ -3,17 +3,17 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Lookback / Lookahead Observation Reports</title>
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <title>GRU Single-Head Quantile (MSE) — Observation Reports</title>
   <link rel="preconnect" href="https://storage.googleapis.com" />
-  <link rel="stylesheet" href="css/styles.css" />
-  <!-- Plotly.js for interactive figure rendering -->
-  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js" charset="utf-8"></script>
 </head>
 <body>
   <header class="app-header">
     <div class="app-header__title">
       <h1>Observation Reports</h1>
-      <p class="app-header__subtitle" id="setNameLabel">Lookback / Lookahead GRU Single-Head (Quantile, MSE)</p>
+      <p class="app-header__subtitle" id="setNameLabel">Lookback / Lookahead GRU Single-Head (Quantile, MSE Loss)</p>
     </div>
     <div class="app-header__controls">
       <button class="btn btn--nav" id="prevBtn" title="Previous report" disabled>&#8592; Prev</button>
@@ -52,9 +52,43 @@
     <span id="footerInfo"></span>
   </footer>
 
-  <script src="js/config.js"></script>
-  <script src="js/gcs.js"></script>
-  <script src="js/render.js"></script>
-  <script src="js/app.js"></script>
+  <!-- All resources are loaded dynamically with a cache-busting timestamp
+       so every page load fetches fresh copies from the server. -->
+  <script>
+    (function () {
+      var ts = Date.now();
+
+      // CSS — cache-busted
+      var link = document.createElement("link");
+      link.rel = "stylesheet";
+      link.href = "css/styles.css?v=" + ts;
+      document.head.appendChild(link);
+
+      // Scripts must load in dependency order. Each waits for the previous
+      // to finish before starting, using onload chaining.
+      var SCRIPTS = [
+        "https://cdn.plot.ly/plotly-2.35.2.min.js?v=" + ts,
+        "js/config.js?v=" + ts,
+        "js/gcs.js?v=" + ts,
+        "js/render.js?v=" + ts,
+        "js/app.js?v=" + ts,
+      ];
+
+      function loadNext(i) {
+        if (i >= SCRIPTS.length) return;
+        var s = document.createElement("script");
+        s.src = SCRIPTS[i];
+        s.onload = function () { loadNext(i + 1); };
+        s.onerror = function () {
+          document.body.innerHTML =
+            '<div style="color:#ff6b6b;padding:2rem;font-family:monospace">' +
+            "ERROR: Failed to load required script: " + SCRIPTS[i] +
+            "</div>";
+        };
+        document.body.appendChild(s);
+      }
+      loadNext(0);
+    })();
+  </script>
 </body>
 </html>

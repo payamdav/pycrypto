@@ -23,7 +23,7 @@
     if (continuationToken) params.set("continuation-token", continuationToken);
 
     const url = `${cfg.LIST_ENDPOINT}?${params.toString()}`;
-    const resp = await fetch(url, { method: "GET" });
+    const resp = await fetch(url, { method: "GET", cache: "no-store" });
     if (!resp.ok) {
       throw new Error(`Listing failed: HTTP ${resp.status}`);
     }
@@ -71,7 +71,7 @@
    */
   async function listViaManifest() {
     const url = `${cfg.PUBLIC_BASE}/${cfg.MANIFEST_PATH}`;
-    const resp = await fetch(url, { method: "GET" });
+    const resp = await fetch(url, { method: "GET", cache: "no-store" });
     if (!resp.ok) {
       throw new Error(`Manifest fetch failed: HTTP ${resp.status}`);
     }
@@ -125,7 +125,7 @@
 
   /** Fetch and parse a single report by an absolute URL. */
   async function fetchReportByUrl(url) {
-    const resp = await fetch(url, { method: "GET" });
+    const resp = await fetch(url, { method: "GET", cache: "no-store" });
     if (!resp.ok) {
       throw new Error(`Report fetch failed: HTTP ${resp.status}`);
     }
