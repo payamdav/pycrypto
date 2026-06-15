@@ -41,9 +41,9 @@ Rule: When instructed to create a reusable library or package, place it here.
 Purpose: Contains Jupyter notebooks organized by use case.
 
 Sub-folder conventions:
-- `notebooks/study/` — notebooks created for learning, research, or study purposes.
+- `notebooks/studies/` — notebooks created for learning, research, or study purposes.
 - `notebooks/tests/` — notebooks created for testing, experimenting, or validating something.
-- Additional sub-folders may be created when a notebook's use case does not fit `study` or `tests`.
+- Additional sub-folders may be created when a notebook's use case does not fit `studies` or `tests`.
 
 Rule: When instructed to create a notebook, determine its use case and place it in the appropriate sub-folder.
 
@@ -69,7 +69,7 @@ When you are instructed to create a file **without** an explicit filename or pat
 | Instruction type | Target location |
 |---|---|
 | Create a notebook for testing | `@/notebooks/tests/<meaningful_name>.ipynb` |
-| Create a notebook for study/research | `@/notebooks/study/<meaningful_name>.ipynb` |
+| Create a notebook for study/research | `@/notebooks/studies/<meaningful_name>.ipynb` |
 | Create a reusable library/package | `@/packages/<meaningful_name>/` |
 | Create a script or tool | `@/scripts/<sub_folder>/<meaningful_name>.py` |
 | Create instructions for another agent | `@/ai_chats/<meaningful_name>.md` |
