@@ -12,12 +12,21 @@ def scan_retro_dip_signals(
 ):
     """Scan a 1-D price array for retro-dip mean-reversion signals.
 
+    The structural pattern, in chronological order, is: a past anchor candle
+    priced ``target_past_premium`` above the current price, followed by an
+    interim dip that falls at least ``min_interim_drawdown`` (but no more than
+    ``max_interim_drawdown``) below the current price, followed by a partial
+    recovery back up to the current price.
+
     For every anchor index ``i`` (starting at ``max_lookback_window``) the
     function scans backward up to ``max_lookback_window`` candles tracking the
-    lowest price seen. A signal is recorded when, before the running interim
-    drawdown exceeds ``max_interim_drawdown``, a past candle is found whose
-    premium over the current price reaches ``target_past_premium`` while the
-    interim drawdown is at least ``min_interim_drawdown``.
+    lowest price seen. The first past candle whose premium over the current
+    price reaches ``target_past_premium`` ends the scan: a signal is recorded
+    only if, by that point, the running interim drawdown already lies in
+    ``[min_interim_drawdown, max_interim_drawdown]`` — meaning the qualifying dip
+    occurred after the anchor. Otherwise the candidate is discarded. The scan
+    also exits early (discarding the candidate) as soon as the running drawdown
+    exceeds ``max_interim_drawdown``.
 
     Parameters
     ----------
@@ -70,6 +79,11 @@ def scan_retro_dip_signals(
                 break
 
             # Target condition: past candle is sufficiently above current price.
+            # The interim dip must occur *after* this anchor (between it and the
+            # current candle), so by the time the anchor is reached the running
+            # drawdown must already satisfy min_interim_drawdown. If it does not,
+            # there was no qualifying dip after the anchor and the candidate is
+            # discarded.
             past_premium = (past_vwap - current_vwap) / current_vwap
             if past_premium >= target_past_premium:
                 if interim_drawdown >= min_interim_drawdown:
@@ -77,7 +91,7 @@ def scan_retro_dip_signals(
                     out[count, 1] = np.float64(j)
                     out[count, 2] = interim_drawdown
                     count += 1
-                    break
+                break
 
     return out[:count]
 
